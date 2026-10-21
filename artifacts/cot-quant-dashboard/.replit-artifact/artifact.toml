@@ -1,0 +1,28 @@
+kind = "data-app"
+previewPath = "/"
+title = "COT Quant Dashboard"
+description = "An interactive Commitment of Traders research dashboard translating a TradingView Pine indicator into an accessible quant workflow. Explore positioning, cycle extremes, Z-scores, confluence signals, open interest, and indicator settings with transparent sample-data labeling."
+version = "1.0.0"
+id = "artifacts/cot-quant-dashboard"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21320
+
+[services.development]
+run = "pnpm --filter @workspace/cot-quant-dashboard run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cot-quant-dashboard", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/cot-quant-dashboard/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21320"
+BASE_PATH = "/"

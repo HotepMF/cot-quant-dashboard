@@ -1,0 +1,71 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { computeRows, defaultSignalSettings, setupScore, type RawRow } from "@workspace/cot-engine";
+import { parseSignalSettings, signalMarket } from "../src/services/cot-screener";
+
+const reportDate = "2026-10-13";
+const now = Date.parse("2026-10-20T12:00:00Z");
+const market = { name: "TEST MARKET - TEST EXCHANGE", code: "test" };
+function history(direction = 1, count = 90): RawRow[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = direction * (i === count - 1 ? 1000 : i + 1);
+    return {
+      date: new Date(Date.parse(`${reportDate}T00:00:00Z`) - (count - 1 - i) * 7 * 86_400_000).toISOString().slice(0, 10),
+      commercial_hedgers: n, large_traders: -n, small_traders: -n / 2, open_interest: 10000 + i * 100,
+    };
+  });
+}
+test("scanner uses the identical dashboard engine for direction, metrics and ranking", () => {
+  for (const direction of [1, -1]) {
+    const rows = history(direction);
+    const latest = computeRows(rows, defaultSignalSettings).at(-1)!;
+    const result = signalMarket(market, { rows, error: null }, reportDate, defaultSignalSettings, now);
+    assert.equal(result.status, "ready");
+    assert.equal(result.signal, direction > 0 ? "bullish" : "bearish");
+    assert.equal(result.zScore, latest.chZ);
+    assert.equal(result.cycle, latest.chCycle);
+    assert.equal(result.weeklyChange, latest.chDelta);
+    assert.equal(result.oiChange, latest.oiMove);
+    assert.equal(result.setupScore, setupScore(latest, defaultSignalSettings));
+    assert.equal(result.name, market.name);
+  }
+});
+test("Z-score and AND gate respect selected participant and disabled Z detection", () => {
+  const rows = history();
+  for (const participant of ["Large Traders", "Small Traders", "Commercial Hedgers"]) {
+    for (const signalMode of ["Z-Score Only", "Both (AND gate)"]) {
+      const settings = { ...defaultSignalSettings, participant, signalMode, requireSmall: true };
+      assert.equal(signalMarket(market, { rows, error: null }, reportDate, settings, now).signal, "bullish");
+      assert.equal(signalMarket(market, { rows, error: null }, reportDate, { ...settings, zEnabled: false }, now).signal, "none");
+    }
+  }
+});
+test("missing, failed, short and stale histories never masquerade as active or neutral signals", () => {
+  const fixtures = [
+    [undefined, "loading"],
+    [{ rows: [], error: "Source failed" }, "error"],
+    [{ rows: history(1, 10), error: null }, "insufficient"],
+    [{ rows: history().slice(0, -1), error: null }, "stale"],
+  ] as const;
+  for (const [data, status] of fixtures) {
+    const result = signalMarket(market, data, reportDate, defaultSignalSettings, now);
+    assert.equal(result.status, status);
+    assert.equal(result.signal, "unavailable");
+    assert.equal(result.setupScore, null);
+    assert.ok(result.message);
+  }
+  assert.equal(signalMarket(market, { rows: history(), error: null }, reportDate, defaultSignalSettings, now + 14 * 86_400_000).status, "stale");
+});
+test("ambiguous threshold boundary does not arbitrarily rank a bullish setup", () => {
+  const rows = history().map(row => ({ ...row, commercial_hedgers: 5, large_traders: 5, small_traders: 5 }));
+  const result = signalMarket(market, { rows, error: null }, reportDate, { ...defaultSignalSettings, confluenceThreshold: 50 }, now);
+  assert.equal(result.signal, "none");
+  assert.equal(result.setupScore, 0);
+});
+test("query validation preserves booleans and rejects malformed settings", () => {
+  assert.equal(parseSignalSettings({ zEnabled: "false", requireSmall: "true" }).zEnabled, false);
+  assert.equal(parseSignalSettings({ zEnabled: "false", requireSmall: "true" }).requireSmall, true);
+  for (const input of [{ lookback: "0" }, { lookback: "3.5" }, { zThreshold: "NaN" }, { requireSmall: "yes" }, { signalMode: "invalid" }]) {
+    assert.throws(() => parseSignalSettings(input));
+  }
+});

@@ -1,0 +1,295 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /cot/markets:
+    get:
+      operationId: getCotMarkets
+      tags: [cot]
+      summary: List markets in the latest CFTC COT report
+      parameters:
+        - name: report
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [futures, combined]
+      responses:
+        "200":
+          description: Latest report date and available CFTC markets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CotMarketsResponse"
+        "400":
+          description: Unsupported report selection
+        "502":
+          description: CFTC report service is unavailable
+  /cot/market:
+    get:
+      operationId: getCotMarketHistory
+      tags: [cot]
+      summary: Retrieve weekly CFTC positioning history for one market
+      parameters:
+        - name: report
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [futures, combined]
+        - name: market
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 200
+      responses:
+        "200":
+          description: Weekly CFTC net positioning and open-interest observations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CotMarketHistoryResponse"
+        "400":
+          description: Invalid report or market selection
+        "502":
+          description: CFTC report service is unavailable
+  /cot/update-status:
+    get:
+      operationId: getCotUpdateStatus
+      tags: [cot]
+      summary: Automatic server-side CFTC update schedule and last successful sync
+      responses:
+        "200":
+          description: Durable automatic-update state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CotUpdateStatus"
+        "503":
+          description: Update status temporarily unavailable
+  /cot/screener:
+    get:
+      operationId: getCotScreener
+      tags: [cot]
+      summary: Scan every current market using the dashboard signal rules
+      parameters:
+        - { name: report, in: query, required: true, schema: { type: string, enum: [futures, combined] } }
+        - { name: lookback, in: query, schema: { type: integer, minimum: 3, maximum: 520, default: 63 } }
+        - { name: zThreshold, in: query, schema: { type: number, minimum: 0, maximum: 20, default: 2 } }
+        - { name: zEnabled, in: query, schema: { type: boolean, default: true } }
+        - { name: confluenceThreshold, in: query, schema: { type: number, minimum: 50, maximum: 95, default: 65 } }
+        - { name: requireSmall, in: query, schema: { type: boolean, default: false } }
+        - { name: changeEnabled, in: query, schema: { type: boolean, default: true } }
+        - { name: oiThreshold, in: query, schema: { type: number, minimum: 0, maximum: 100, default: 25 } }
+        - { name: participant, in: query, schema: { type: string, enum: [Large Traders, Small Traders, Commercial Hedgers], default: Commercial Hedgers } }
+        - { name: signalMode, in: query, schema: { type: string, enum: [Z-Score Only, COT Confluence, Both (AND gate)], default: COT Confluence } }
+      responses:
+        "200":
+          description: Live scan progress, coverage and per-market signal observations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CotScreenerResponse"
+        "400":
+          description: Invalid report or settings
+        "502":
+          description: Official CFTC market list unavailable
+  /cot/screener/refresh:
+    post:
+      operationId: refreshCotScan
+      tags: [cot]
+      summary: Refresh the report-wide source histories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CotScanRefresh"
+      responses:
+        "200":
+          description: The shared scan is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CotScanRefreshResponse"
+        "400":
+          description: Unsupported report
+        "502":
+          description: CFTC source unavailable
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    CotMarket:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+      required: [name, code]
+    CotMarketsResponse:
+      type: object
+      properties:
+        report:
+          type: string
+          enum: [futures, combined]
+        reportAsOf:
+          type: string
+          format: date
+        checkedAt:
+          type: string
+          format: date-time
+        markets:
+          type: array
+          items:
+            $ref: "#/components/schemas/CotMarket"
+      required: [report, reportAsOf, checkedAt, markets]
+    CotObservation:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        largeTraders:
+          type: number
+        smallTraders:
+          type: number
+        commercialHedgers:
+          type: number
+        openInterest:
+          type: [number, "null"]
+      required: [date, largeTraders, smallTraders, commercialHedgers, openInterest]
+    CotMarketHistoryResponse:
+      type: object
+      properties:
+        sourceWarning: { type: [string, "null"] }
+        report:
+          type: string
+          enum: [futures, combined]
+        marketName:
+          type: string
+        reportAsOf:
+          type: string
+          format: date
+        checkedAt:
+          type: string
+          format: date-time
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/CotObservation"
+      required: [report, marketName, reportAsOf, checkedAt, rows]
+    CotUpdateStatus:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        timeZone: { type: string }
+        running: { type: boolean }
+        lastAttemptAt: { type: [string, "null"], format: date-time }
+        lastSuccessAt: { type: [string, "null"], format: date-time }
+        nextCheckAt: { type: [string, "null"], format: date-time }
+        lastError: { type: [string, "null"] }
+        expectedReportDate: { type: string, format: date }
+        waitingForRelease: { type: boolean }
+        reports:
+          type: object
+          properties:
+            futures: { type: [string, "null"] }
+            combined: { type: [string, "null"] }
+          required: [futures, combined]
+      required: [enabled, timeZone, running, lastAttemptAt, lastSuccessAt, nextCheckAt, lastError, expectedReportDate, waitingForRelease, reports]
+    CotScanRefresh:
+      type: object
+      properties:
+        report: { type: string, enum: [futures, combined] }
+      required: [report]
+    CotScanRefreshResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [loading, ready, error] }
+        startedAt: { type: string, format: date-time }
+      required: [status, startedAt]
+    CotSignalSettings:
+      type: object
+      properties:
+        lookback: { type: integer }
+        zThreshold: { type: number }
+        zEnabled: { type: boolean }
+        confluenceThreshold: { type: number }
+        requireSmall: { type: boolean }
+        changeEnabled: { type: boolean }
+        oiThreshold: { type: number }
+        participant: { type: string }
+        signalMode: { type: string }
+      required: [lookback, zThreshold, zEnabled, confluenceThreshold, requireSmall, changeEnabled, oiThreshold, participant, signalMode]
+    CotSignalMarket:
+      type: object
+      properties:
+        name: { type: string }
+        code: { type: string }
+        status: { type: string, enum: [ready, loading, insufficient, stale, error] }
+        message: { type: [string, "null"] }
+        historyRows: { type: integer }
+        historyStart: { type: [string, "null"] }
+        reportDate: { type: [string, "null"] }
+        signal: { type: string, enum: [bullish, bearish, none, unavailable] }
+        setupScore: { type: [number, "null"] }
+        zScore: { type: [number, "null"] }
+        cycle: { type: [number, "null"] }
+        weeklyChange: { type: [number, "null"] }
+        oiChange: { type: [number, "null"] }
+        commercialCycle: { type: [number, "null"] }
+        largeCycle: { type: [number, "null"] }
+        smallCycle: { type: [number, "null"] }
+        commercialNet: { type: [number, "null"] }
+        largeNet: { type: [number, "null"] }
+        smallNet: { type: [number, "null"] }
+        confluence: { type: string, enum: [bullish, bearish, none] }
+        largeMove: { type: boolean }
+      required: [name, code, status, message, historyRows, historyStart, reportDate, signal, setupScore, zScore, cycle, weeklyChange, oiChange, commercialCycle, largeCycle, smallCycle, commercialNet, largeNet, smallNet, confluence, largeMove]
+    CotScreenerResponse:
+      type: object
+      properties:
+        report: { type: string, enum: [futures, combined] }
+        reportAsOf: { type: string, format: date }
+        startedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        status: { type: string, enum: [loading, ready, error] }
+        message: { type: [string, "null"] }
+        total: { type: integer }
+        processed: { type: integer }
+        settings: { $ref: "#/components/schemas/CotSignalSettings" }
+        markets:
+          type: array
+          items: { $ref: "#/components/schemas/CotSignalMarket" }
+      required: [report, reportAsOf, startedAt, updatedAt, status, message, total, processed, settings, markets]
+

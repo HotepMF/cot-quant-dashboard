@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cot-quant-dashboard",
+  "main": "artifacts/api-server/cloudflare/index.ts",
+  "compatibility_date": "2026-10-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./artifacts/cot-quant-dashboard/dist/public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/api"]
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "cot-quant-data",
+    "database_id": "a882cbc3-97c4-49e0-a611-3c9facc88d88",
+    "migrations_dir": "deployment/cloudflare/migrations"
+  }],
+  "workflows": [{
+    "binding": "CFTC_UPDATER",
+    "name": "cot-cftc-updater",
+    "class_name": "CftcUpdateWorkflow"
+  }],
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "limits": { "cpu_ms": 300000 },
+  "observability": { "enabled": true }
+}
