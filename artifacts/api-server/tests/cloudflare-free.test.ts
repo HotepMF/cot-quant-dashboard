@@ -94,6 +94,8 @@ test("Actual D1 + REST + GitHub collector: complete both reports, preserve last-
       await native.batch(schema.split(";").map(s => s.trim()).filter(Boolean).map(s => native.prepare(s)));
     }
     let failCombined = false, sourceRequests = 0, dispatches = 0;
+    let dispatchStatus = 204, dispatchThrows = false;
+    const credentialMarker = "test-only-credential-must-not-appear-in-diagnostics";
     const transport = (async (_url, init) => {
       const { batch } = JSON.parse(String(init?.body));
       try {
@@ -104,7 +106,14 @@ test("Actual D1 + REST + GitHub collector: complete both reports, preserve last-
     const db = new RestD1("a".repeat(32), "b".repeat(8) + "-1234-1234-1234-" + "c".repeat(12), "test-only", transport);
     globalThis.fetch = (async (input, init) => {
       const url = new URL(String(input));
-      if (url.hostname === "api.github.com") { dispatches++; return new Response(null, { status: 204 }); }
+      if (url.hostname === "api.github.com") {
+        dispatches++;
+        if (dispatchThrows) throw new Error(`Transport error with Bearer ${credentialMarker}`);
+        return new Response(dispatchStatus === 204 ? null : credentialMarker, {
+          status: dispatchStatus,
+          headers: { "X-Diagnostic-Test": credentialMarker },
+        });
+      }
       sourceRequests++;
       if (failCombined) return new Response(null, { status: 503 });
       const query = url.searchParams.get("query") ?? "";
@@ -144,9 +153,39 @@ test("Actual D1 + REST + GitHub collector: complete both reports, preserve last-
     const failed = await collectReports(db);
     assert.equal(failed.failures.length, 2);
     assert.equal(await native.prepare("SELECT run_id FROM cot_snapshots WHERE report='futures'").first("run_id"), firstRun);
+    // Exercise the public refresh path with real D1 coordination. Only fixed
+    // diagnostic fields may reach logs; upstream bodies and errors stay private.
+    const diagnostics: unknown[][] = [];
+    const errorLog = t.mock.method(console, "error", (...args: unknown[]) => { diagnostics.push(args); });
+    const diagnosticEnv = { ...env, GITHUB_ACTIONS_TOKEN: credentialMarker };
+    for (const status of [401, 403, 404, 422, 429, 500, null]) {
+      dispatchStatus = status ?? 204;
+      dispatchThrows = status === null;
+      diagnostics.length = 0;
+      await native.prepare("UPDATE cot_update_state SET last_attempt_at=NULL").run();
+      const response = await handleApi(new Request("https://example.test/api/cot/screener/refresh", {
+        method: "POST", body: JSON.stringify({ report: "futures" }),
+      }), diagnosticEnv);
+      assert.equal(response.status, 503);
+      const publicBody = await response.text();
+      assert.match(publicBody, /Last-good data has been retained/);
+      assert.deepEqual(diagnostics.filter(args => args[0] === "github-dispatch-failed"), [
+        ["github-dispatch-failed", { phase: status === null ? "transport" : "http", httpStatus: status }],
+      ]);
+      assert.ok(!JSON.stringify(diagnostics).includes(credentialMarker));
+      assert.ok(!publicBody.includes(credentialMarker));
+      assert.equal(await native.prepare("SELECT running FROM cot_update_state").first("running"), 0);
+      assert.equal(await native.prepare("SELECT run_id FROM cot_snapshots WHERE report='futures'").first("run_id"), firstRun);
+    }
+    diagnostics.length = 0;
+    dispatchStatus = 204;
+    dispatchThrows = false;
+    const dispatchesBeforeSuccess = dispatches;
     await native.prepare("UPDATE cot_update_state SET last_attempt_at=NULL").run();
     assert.equal(await launchUpdate(native.withSession("first-primary") as Sql, env, true), true);
     assert.equal(await launchUpdate(native.withSession("first-primary") as Sql, env, true), false);
-    assert.equal(dispatches, 1, "Cron and manual updates share the same fenced cooldown");
+    assert.equal(dispatches - dispatchesBeforeSuccess, 1, "Cron and manual updates share the same fenced cooldown");
+    assert.deepEqual(diagnostics, [], "Successful dispatch and cooldown skips do not log failures");
+    errorLog.mock.restore();
   } finally { await runtime.dispose(); }
 });
