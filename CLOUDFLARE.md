@@ -1,25 +1,34 @@
-# COT Quant Dashboard: GitHub → Cloudflare
+# Cloudflare Free + GitHub Actions
 
-The Cloudflare target uses **Workers + Static Assets + D1 + Workflows + Cron**.
-No Neon, Supabase, Hyperdrive, or separate database account is needed.
-Replit development keeps its original Node server and PostgreSQL database.
-Preparing this repository does not publish a Worker.
+This target uses **Workers Free, Static Assets, the existing D1 database, and standard
+GitHub Actions runners in a public repository**. It does not use paid CPU limits,
+Cloudflare Workflows, Hyperdrive, an external PostgreSQL provider, or a Replit
+process to keep production updated. Replit's PostgreSQL preview stays separate.
 
-## Database
+## How it works
 
-`wrangler.jsonc` binds `DB` to the dedicated `cot-quant-data` D1 database.
-Its database ID is a resource identifier, not a password.
-The initial schema is in `deployment/cloudflare/migrations/0001_cot.sql`.
-The deployment command applies pending D1 migrations before publishing the Worker.
-This does not run migrations against Replit PostgreSQL.
+- Cloudflare serves the React dashboard and lightweight `/api/*` reads.
+- A Free-plan Cron runs every ten minutes. A timezone-aware gate checks for the
+  Friday 3:30 p.m. America/New_York release, daily catch-up, and delayed-report
+  retries. The timer dispatches a GitHub workflow; it does not collect or calculate.
+- The GitHub job downloads both official Legacy Futures Only and Combined reports.
+  It prepares the default scanner and public history responses outside Workers.
+- D1 stages immutable per-market records. A fenced atomic batch switches a
+  report's pointer only after raw histories, public histories, and scanner output
+  are complete. Failed jobs retain last-good reports. Expired leases recover.
+- Unchanged report dates normally require metadata checks only. The website's
+  Rescan CFTC button requests a full refresh, with a shared fifteen-minute cooldown.
+- Default sector/watchlist scans use prepared responses. Custom rule settings use
+  a background browser worker and the same shared calculation engine. Histories
+  are cached in that worker by immutable snapshot. Mixed snapshots are rejected.
+- Stale reports never produce active setups, even if every later collection fails.
 
-The Cloudflare database starts empty. It will collect official CFTC data itself
-after publishing; no Replit database dump or credentials need to be exported.
-Do not commit `.env`, `.dev.vars`, credentials, database backups, or generated output.
+GitHub's `schedule` event is intentionally not the primary timer: scheduled public
+workflows can be disabled after repository inactivity. This workflow uses
+`workflow_dispatch`, called by Cloudflare. GitHub jobs can still queue or fail;
+retry timing is not a guarantee of an exact publication minute.
 
-## Verify without publishing
-
-Run from the repository root with Node 24 and pnpm 10.26.1:
+## Build and test without publishing
 
 ```sh
 pnpm install --frozen-lockfile
@@ -27,104 +36,110 @@ pnpm cloudflare:test
 pnpm cloudflare:check
 ```
 
-Tests exercise real local D1 through Wrangler's Miniflare runtime. They do not
-connect to Replit PostgreSQL or mutate the Cloudflare production database.
-`cloudflare:check` type-checks shared libraries and Worker code, builds the React
-dashboard, and bundles the Worker in dry-run mode. It does not publish.
+The check type-checks, builds the dashboard and browser worker, then dry-runs the
+Worker bundle. It does not publish. Tests use a local real D1 emulator, a REST
+transport against it, and the bundled browser-worker code. They do not mutate
+the production database or use real credentials.
 
-## Connect the GitHub repository in Cloudflare
+## Cloudflare Git build settings
 
-In **Workers & Pages**, create a Worker by importing the GitHub repository.
-Authorize Cloudflare's GitHub app for this repository if prompted; Replit's GitHub
-authorization is separate from the GitHub authorization used by Cloudflare Builds.
-
-Use:
+The active repository is the one shown in **Worker → Settings → Builds**.
+Cloudflare onboarding can create a copy; do not assume an earlier source-export
+repository is still the active build source.
 
 | Setting | Value |
 | --- | --- |
 | Worker name | `cot-quant-dashboard` |
-| Root directory | repository root |
+| Production branch | `main` |
+| Root directory | `/` (repository root) |
 | Build command | `pnpm cloudflare:build` |
 | Deploy command | `pnpm cloudflare:publish-built` |
-| Node version | `24` |
-| Production branch | `main` |
+| Node | `24` |
 
-The build sets `PORT=5173` and `BASE_PATH=/` itself. Dashboard output is
-`artifacts/cot-quant-dashboard/dist/public`. Do not select a frontend-only Pages
-deployment: the API, Cron, and Workflow must also be deployed.
+Use Worker + Static Assets, not a frontend-only Pages deployment. Do not use
+`pnpm run build`: it includes development-only packages that are not the
+Cloudflare app. The Cloudflare-specific build supplies its own PORT and BASE_PATH.
 
-Review current Cloudflare pricing and usage limits before enabling paid service.
-Workers Paid is recommended for full-market signal computation; the free HTTP
-CPU limit is too restrictive for this workload. D1 and Workflows also have usage
-limits. This preparation does not upgrade the account or approve charges.
+`wrangler.jsonc` already names `cot-quant-data`. The publish command applies
+additive D1 migrations, then publishes. Existing snapshots and histories are not
+dropped. The new prepared-response tables are initially empty; the first GitHub
+collection fills them before the Free-plan API can serve scans.
 
-Limit automatic production deployments to the intended release branch.
-Do not bind production D1, Cron, or Workflows to untrusted pull-request previews.
-Click Cloudflare's deploy action only when ready to publish.
+The Cloudflare build credential needs Workers deployment and account-scoped
+**D1 Edit** permission for migrations. It does not need a Workflows permission.
+Do not expose production bindings or deployment credentials to untrusted PR jobs.
+Disable automatic preview builds before pushing a review branch if necessary.
 
-## What publishing does
+## One-time automation permissions
 
-`cloudflare:publish-built` validates the configured D1 ID, applies pending D1
-migrations, and publishes the already-built Worker. For a trusted manual terminal,
-`pnpm cloudflare:deploy` builds first, then runs the same publishing command.
-These commands **publish to Cloudflare**; do not run them as a local check.
-Authentication belongs in Cloudflare's secure browser/CI setup, never in code.
+Never paste credentials into chat, source files, Git URLs, or screenshots.
+Use the providers' encrypted secret fields. Agent integrations are for setup;
+these runtimes need their own narrowly scoped credentials.
 
-Wrangler configures the D1 binding, the `cot-cftc-updater` Workflow, static assets,
-and the ten-minute Cron schedule together. No always-on Node process is required.
+### GitHub repository
 
-## Initial collection and verification
+Under the active repository's **Settings → Secrets and variables → Actions**:
 
-Use the actual URL shown by Cloudflare after publishing; do not invent a hostname.
-The next scheduled invocation starts collection within approximately ten minutes.
-To start immediately, use the dashboard refresh control, or POST:
+1. Add repository **variable** `CLOUDFLARE_ACCOUNT_ID`: your Cloudflare account ID.
+2. Add repository **secret** `CLOUDFLARE_D1_TOKEN`: a Cloudflare API token with
+   Account → D1 → Edit for the account containing `cot-quant-data`.
+3. Optionally add **secret** `CFTC_APP_TOKEN` for an official Socrata app token.
+   The collector works without it, subject to the source's rate limits.
 
-```sh
-curl -X POST https://YOUR-ACTUAL-WORKER-URL/api/cot/screener/refresh \
-  -H 'Content-Type: application/json' --data '{"report":"futures"}'
-```
+The database ID comes from `wrangler.jsonc`, not another credential.
+Enable GitHub Actions for the repository. Use standard `ubuntu-latest` runners;
+do not enable larger runners, paid storage, or upload history artifacts. The
+workflow has read-only source permissions and never commits data or publishes code.
 
-Either report's refresh starts the shared futures + combined Workflow. Requests
-coalesce and have a global fifteen-minute cooldown.
-Until initial collection finishes, data endpoints return explicit HTTP 503
-responses rather than fabricated data. Follow progress at `/api/cot/update-status`
-and in the Cloudflare Workflows dashboard.
+### Cloudflare Worker
 
-Verify:
+In **Worker → Settings → Variables and Secrets**:
 
-- `/api/healthz` returns `{"status":"ok"}`.
-- `/api/cot/update-status` shows both report dates, success, and the next check.
-- `/api/cot/markets?report=futures` and `?report=combined` show exact market names.
-- `/api/cot/screener?report=futures` shows genuine signals and coverage.
-- `/`, `/sector-signals`, and `/signal-watchlist` survive direct navigation/reload.
-- Individual markets, sector filters, signal settings, and CSV mode work.
-- Scheduled collection runs without an open browser.
-- A failed or partial collection preserves the last complete saved snapshot.
+1. Set encrypted **secret** `GITHUB_ACTIONS_TOKEN` to a fine-grained GitHub token,
+   limited to the active repository with **Actions: Read and write** permission.
+2. Confirm non-secret `GITHUB_REPOSITORY` matches the actual connected
+   `owner/repository`. The checked-in configuration supplies it.
+3. Leave `CFTC_WORKFLOW_REF` as `main`, or the trusted published branch.
 
-Browser-local CSV imports and preferences do not automatically transfer to a new
-hostname. Export any CSV data you want to keep before changing domains.
+The dispatch credential does not need permission to write repository contents.
+Choose an expiry policy and rotate before expiry. Do not store a deployment token
+in the browser. Missing automation credentials explicitly show updates disabled;
+refresh requests return a setup error rather than claiming collection started.
 
-## Storage and scheduling safeguards
+## Final launch (user action)
 
-- D1 stores one bounded history per market, not an oversized whole-report JSON row.
-- Atomic D1 batches guard lease ownership and complete market coverage before
-  changing the saved snapshot pointer. Retries are idempotent.
-- All coordination starts with a primary-consistent D1 session.
-- Old/expired workflows and older report dates cannot replace newer saved data.
-- Last-good snapshots are retained indefinitely. Unreferenced staging runs expire
-  after an hour when a later collection finishes, allowing in-flight reads to settle.
-- Cron runs in UTC; due-time calculations use `America/New_York` with DST handling.
-- Friday checks start at 15:30 Eastern and retry delayed releases. Daily checks
-  catch corrections, including after a missed release.
-- API reads use twenty-market batches. Completed signal responses are internally
-  cached for five minutes by snapshot timestamp, settings, report, and UTC day.
-- Browser API responses remain `Cache-Control: no-store`.
+1. Review/merge the prepared code into the connected repository when ready to
+   publish, or use the Cloudflare dashboard's build/deploy action.
+2. Confirm the build and additive migrations succeed. No Workers Paid upgrade
+   is required by this configuration.
+3. Configure the runtime permissions above and publish those settings yourself.
+4. Under GitHub **Actions → Update official CFTC data**, use **Run workflow** for
+   the first collection, leaving `owner` empty. Alternatively, use the website's
+   Rescan CFTC button after the Worker dispatch credential is configured.
+5. Check `/api/healthz`, `/api/cot/update-status`, both scanner report modes,
+   sector/watchlist pages, a custom setting, and single-market details.
+6. Check real Cloudflare CPU metrics after launch: local tests cannot certify
+   production's 10 ms CPU budget. Check D1 usage and GitHub job completion too.
 
-Add a custom domain only after the temporary Cloudflare URL passes verification.
-Preserve email DNS records and do not apply blanket caching to `/api/*`.
+Data updates change D1, not the code branch. They do not require republishing the
+website. GitHub Actions remains the compute dependency; runner/service outages
+are surfaced as stale or failed data, not fabricated neutral signals.
 
-References:
-[D1](https://developers.cloudflare.com/d1/),
-[Static assets](https://developers.cloudflare.com/workers/static-assets/),
-[Workflows](https://developers.cloudflare.com/workflows/),
-[Cron](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
+## Free limits and operational boundaries
+
+- Workers Free: 100,000 dynamic requests/day and 10 ms CPU per invocation.
+- Static asset requests are free and unlimited when they do not invoke the Worker.
+- D1 Free: 500 MB per database, 5 GB total storage, 5 million rows read/day,
+  and 100,000 rows written/day. Indexes and cleanup count toward usage.
+- Custom scans initially download market histories. Slow devices/networks can
+  take longer; progress is visible and calculations run off the UI thread.
+- Keep one complete snapshot per report plus bounded staging/cleanup retention.
+  Never delete the last-good report to recover from a failed collection.
+- Free quotas are not unlimited capacity. Exceeding them can interrupt service;
+  do not automatically enable billing or silently switch to a paid plan.
+- Browser CSVs and preferences do not move to a new domain automatically. Export
+  saved CSVs before changing domains. Production collection never deletes them.
+
+References: [Workers limits](https://developers.cloudflare.com/workers/platform/limits/),
+[D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/),
+[GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).

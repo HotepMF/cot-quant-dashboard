@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { getGetCotScreenerQueryKey, useGetCotScreener, useRefreshCotScan } from "@workspace/api-client-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getGetCotScreenerQueryKey, useRefreshCotScan } from "@workspace/api-client-react";
+import { loadScreener } from "@/lib/browser-scan";
 import type { CotSignalMarket, GetCotScreenerParams } from "@workspace/api-client-react";
 import { buildMarketCatalog, MARKET_SECTORS } from "@/lib/market-catalog";
 import type { MarketSector } from "@/lib/market-catalog";
@@ -40,13 +41,16 @@ export function useScreener() {
   };
   const queryKey = getGetCotScreenerQueryKey(params);
   const qc = useQueryClient();
-  const query = useGetCotScreener(params, {
-    query: {
+  const [scanProgress, setScanProgress] = useState<{ done: number; total: number } | null>(null);
+  const query = useQuery({
       queryKey,
+      queryFn: ({ signal }) => {
+        setScanProgress(null);
+        return loadScreener(params, signal, (done, total) => setScanProgress({ done, total }));
+      },
       refetchOnMount: "always",
       refetchOnWindowFocus: true,
       refetchInterval: q => (q.state.data?.status === "loading" ? 2000 : 5 * 60 * 1000),
-    },
   });
   const refresh = useRefreshCotScan({
     mutation: { onSuccess: () => { void qc.invalidateQueries({ queryKey }); } },
@@ -62,10 +66,10 @@ export function useScreener() {
       return { ...m, label: c.label, exchange: c.exchange, sector: c.sector, searchText: c.searchText, active, oiAlert, flagged: active || (m.status === "ready" && m.largeMove) || oiAlert };
     });
   }, [data?.markets, settings.oiThreshold]);
-  const scanning = data?.status === "loading" || (query.isFetching && !data);
+  const scanning = data?.status === "loading" || query.isFetching;
   const settled = data?.status === "ready" && !rows.some(r => r.status === "loading");
   return {
-    settings, report, setReport, query, data, rows, scanning, settled,
+    settings, report, setReport, query, data, rows, scanning, settled, scanProgress,
     lookback: params.lookback ?? settings.lookback,
     refresh: () => refresh.mutate({ data: { report } }),
     refreshing: refresh.isPending,
