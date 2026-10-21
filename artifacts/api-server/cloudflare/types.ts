@@ -6,7 +6,9 @@ export type History = { rows: RawRow[]; error: string | null };
 export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
-  CFTC_UPDATER: Workflow<{ owner: string }>;
+  GITHUB_REPOSITORY?: string;
+  GITHUB_ACTIONS_TOKEN?: string;
+  CFTC_WORKFLOW_REF?: string;
   CFTC_APP_TOKEN?: string;
 }
 export const JOB_ID = "weekly-cftc";

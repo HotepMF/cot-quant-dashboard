@@ -77,7 +77,8 @@ export function ScannerShell({ eyebrow, title, lede, screener, children }: { eye
 
 function ScanStatus({ screener }: { screener: Screener }) {
   const { data, query, scanning } = screener;
-  const total = data?.total ?? 0, processed = data?.processed ?? 0;
+  const progress = scanning ? screener.scanProgress : null;
+  const total = progress?.total ?? data?.total ?? 0, processed = progress?.done ?? data?.processed ?? 0;
   const pct = total ? Math.round(processed / total * 100) : 0;
   const err = query.isError || data?.status === "error" || screener.refreshError;
   const warning = !err && Boolean(data?.message);

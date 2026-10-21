@@ -8,6 +8,10 @@ import { acquireUpdate, commitRun, finishUpdate, initializeRun, readHistories, s
 import type { Sql } from "../cloudflare/database";
 import type { Env } from "../cloudflare/types";
 import type { RawRow } from "@workspace/cot-engine";
+import { computeRows, defaultSignalSettings, signalMarket } from "@workspace/cot-engine";
+import { stagePublicHistories, stageSignals } from "../cloudflare/prepared";
+import { RestD1 } from "../cloudflare/rest-d1";
+import { launchUpdate } from "../cloudflare/launcher";
 
 const emptyEnv = {} as Env;
 const request = (path: string, init?: RequestInit) => new Request(`https://cot.example/api${path}`, init);
@@ -72,7 +76,7 @@ test("Ambiguous official current market lists cannot initialize a scan", async t
   await assert.rejects(officialMarkets("combined"), /ambiguous/);
 });
 
-test("Actual D1 runtime: leases, resumable staging, atomic snapshots, API parity and cooldown", async () => {
+test("Actual D1 runtime: leases, resumable staging, atomic snapshots, API parity and cooldown", async t => {
   // Use Wrangler's installed Miniflare runtime, not a PostgreSQL/SQLite mock.
   const require = createRequire(import.meta.url);
   const { Miniflare, convertV4MiniflareOptions } = createRequire(require.resolve("wrangler/package.json"))("miniflare");
@@ -83,7 +87,8 @@ test("Actual D1 runtime: leases, resumable staging, atomic snapshots, API parity
   try {
     const db = await runtime.getD1Database("DB") as Env["DB"];
     const schema = await readFile(new URL("../../../deployment/cloudflare/migrations/0001_cot.sql", import.meta.url), "utf8");
-    await db.batch(schema.split(";").map(s => s.trim()).filter(Boolean).map(s => db.prepare(s)));
+    const preparedSchema = await readFile(new URL("../../../deployment/cloudflare/migrations/0002_prepared_data.sql", import.meta.url), "utf8");
+    await db.batch((schema + preparedSchema).split(";").map(s => s.trim()).filter(Boolean).map(s => db.prepare(s)));
     const sql: Sql = db.withSession("first-primary");
     const owner = crypto.randomUUID();
     assert.equal(await acquireUpdate(sql, owner), true);
@@ -98,6 +103,10 @@ test("Actual D1 runtime: leases, resumable staging, atomic snapshots, API parity
     assert.equal((await viewMetadata(sql, "futures"))!.processed, 1, "retry does not double-count");
     await assert.rejects(commitRun(sql, owner, "futures"), /Incomplete/);
     await stageHistories(sql, owner, "futures", new Map([[markets[1].name, { rows: [row], error: null }]]));
+    await assert.rejects(commitRun(sql, owner, "futures", true), /CHECK|constraint/, "prepared scan and public histories are mandatory before publication");
+    const completeHistories = new Map(markets.map(m => [m.name, { rows: [row], error: null }]));
+    await stagePublicHistories(sql, owner, "futures", completeHistories);
+    await stageSignals(sql, owner, "futures", markets.map(m => signalMarket(m, completeHistories.get(m.name), reportAsOf, defaultSignalSettings)));
     await commitRun(sql, owner, "futures");
     await commitRun(sql, owner, "futures"); // Successful commit replay is harmless.
     const view = (await viewMetadata(sql, "futures"))!;
@@ -107,7 +116,13 @@ test("Actual D1 runtime: leases, resumable staging, atomic snapshots, API parity
     assert.equal((await updateStatus(sql)).running, false);
     assert.equal(await acquireUpdate(sql, crypto.randomUUID()), false, "not due");
     let created = 0;
-    const env = { DB: db, CFTC_UPDATER: { create: async () => { created++; return {}; } } } as unknown as Env;
+    const env = { DB: db, GITHUB_REPOSITORY: "test/cot", GITHUB_ACTIONS_TOKEN: "test-only" } as unknown as Env;
+    const originalFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = originalFetch; });
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).startsWith("https://api.github.com/")) { created++; return new Response(null, { status: 204 }); }
+      return originalFetch(input, init);
+    }) as typeof fetch;
     const scopedDatabase: typeof import("../cloudflare/database").withDatabase = async (_env, run) => run(sql);
     const call = (path: string, init?: RequestInit) => handleApi(request(path, init), env, undefined, undefined, scopedDatabase);
     const marketList = await (await call("/cot/markets?report=futures")).json() as any;

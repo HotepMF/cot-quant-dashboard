@@ -1,8 +1,7 @@
 import { handleApi } from "./api";
 import { withDatabase } from "./database";
-import { launchUpdate } from "./launcher";
+import { automationConfigured, launchUpdate } from "./launcher";
 import type { Env } from "./types";
-export { CftcUpdateWorkflow } from "./workflow";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
@@ -11,6 +10,7 @@ export default {
     return env.ASSETS.fetch(request);
   },
   async scheduled(_controller: ScheduledController, env: Env) {
+    if (!automationConfigured(env)) return;
     await withDatabase(env, sql => launchUpdate(sql, env));
   },
 } satisfies ExportedHandler<Env>;

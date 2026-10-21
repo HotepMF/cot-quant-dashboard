@@ -32,14 +32,14 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 
 ### Automatic CFTC updates
 
-- The API server runs the updater without requiring any browser or visitor.
-- The user has chosen GitHub → Cloudflare for production hosting with D1 storage, not external PostgreSQL. Follow `CLOUDFLARE.md` and the root `cloudflare:*` commands. Replit's PostgreSQL database remains separate and unchanged.
+- The Node/Replit API server runs its updater without requiring any browser or visitor. Cloudflare production dispatches a GitHub collection job instead.
+- The user has chosen GitHub → Cloudflare Workers Free for production hosting with D1 storage, not external PostgreSQL or a paid Workers upgrade. Follow `CLOUDFLARE.md` and the root `cloudflare:*` commands. Replit's PostgreSQL database remains separate and unchanged.
 - Replit development retains the original Node updater. Reserved VM hosting is only relevant if deliberately publishing that Node target instead; its in-process timer requires an always-on server.
-- Release checks start Fridays at 3:30 p.m. America/New_York and retry every ten minutes through 8 p.m. if either report is missing. Delays and failures retry hourly outside that window; daily 6 a.m. checks catch corrections and missed releases.
+- Release checks start Fridays at 3:30 p.m. America/New_York and retry every ten minutes through 8 p.m. if either report is missing. Delays and failures retry hourly outside that window; daily 6 a.m. checks catch missed releases. The Free target skips history downloads for unchanged report dates; a manual full refresh can pick up same-date revisions.
 - Both Legacy Futures Only and Legacy Combined reports are collected. Complete successful scans are saved atomically (PostgreSQL in Replit, D1 snapshot pointers in Cloudflare); failed/partial scans do not replace the last successful saved snapshot.
 - `GET /api/cot/update-status` exposes last attempt/success, next check, errors, and report dates. The dashboard refreshes automatically after successful updates.
 - Replit database schema changes are applied in development with `pnpm --filter @workspace/db run push`; Replit production schema is applied by its Publish flow, never by startup DDL. Cloudflare's separate D1 migrations live in `deployment/cloudflare/migrations` and are applied explicitly by its deployment command.
-- Cloudflare uses D1 + Cron + resumable Workflows, twenty-market staging batches, and fenced expiring row leases. D1 atomic batches enforce lease ownership and completeness before a snapshot pointer swap. Keep its database and scheduler separate from the Node development target; Hyperdrive and a separate PostgreSQL provider are not required.
+- Cloudflare Free uses lightweight Cron-to-GitHub dispatch, pre-serialized D1 responses, and twenty-market staging batches in standard public-repository GitHub runners. D1 atomic batches enforce expiring lease ownership and complete raw/public histories plus prepared scanner output before a snapshot pointer swap. Custom scanner settings run in a browser worker with the shared engine; mixed snapshots are rejected. No paid CPU setting, Cloudflare Workflow, Hyperdrive, or external PostgreSQL is required. Runtime credentials must be set in provider secret stores before unattended updates work; do not publish or upgrade billing automatically.
 - Schedule and outage/restart tests are in `artifacts/api-server/tests/`. Persistence integration tests require a successful initial application sync.
 
 _Describe the high-level user-facing capabilities of this app once they exist._

@@ -35,12 +35,13 @@ function cycleRanks(values: number[]) {
 }
 
 /** Shared verbatim rule implementation for the single-market dashboard and market-wide scanner. */
-export function computeRows(raw: RawRow[], settings: SignalSettings): CalcRow[] {
+export function computeRows(raw: RawRow[], settings: SignalSettings, latestOnly = false): CalcRow[] {
   const vals = (k: MetricKey) => raw.map(r => r[k]);
   const allVals = { large_traders: vals("large_traders"), small_traders: vals("small_traders"), commercial_hedgers: vals("commercial_hedgers") };
   const deltas = Object.fromEntries(metricKeys.map(k => [k, allVals[k].map((v, i) => i ? v - allVals[k][i - 1] : Number.NaN)])) as Record<MetricKey, number[]>;
   const cycleSeries = { large_traders: cycleRanks(allVals.large_traders), small_traders: cycleRanks(allVals.small_traders), commercial_hedgers: cycleRanks(allVals.commercial_hedgers) };
-  return raw.map((r, i) => {
+  return (latestOnly ? raw.slice(-1) : raw).map((r, index) => {
+    const i = latestOnly ? raw.length - 1 : index;
     const selectedKey: MetricKey = settings.participant === "Large Traders" ? "large_traders" : settings.participant === "Small Traders" ? "small_traders" : "commercial_hedgers";
     const z = {
       large_traders: zScore(allVals.large_traders.slice(0, i + 1), settings.lookback),
@@ -84,6 +85,8 @@ export function computeRows(raw: RawRow[], settings: SignalSettings): CalcRow[] 
     };
   });
 }
+
+export { parseSignalSettings, signalMarket } from "./signals";
 
 /** Descriptive rule extremity, never a probability or a prediction of returns. */
 export function setupScore(row: CalcRow, settings: SignalSettings) {

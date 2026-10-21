@@ -1,0 +1,40 @@
+name: Update official CFTC data
+on:
+  workflow_dispatch:
+    inputs:
+      owner:
+        description: "Lease owner supplied by Cloudflare. Leave empty for a manual run."
+        required: false
+        type: string
+      full_refresh:
+        description: "Recollect histories even if the official report date is unchanged."
+        required: false
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: official-cftc-collection
+  cancel-in-progress: false
+jobs:
+  collect:
+    # Standard public-repository runners only; no paid/larger runner or stored artifacts.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: pnpm install --frozen-lockfile
+      - name: Collect and atomically prepare both report types
+        run: pnpm --filter @workspace/api-server exec tsx cloudflare/collect-cli.ts
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
+          CFTC_APP_TOKEN: ${{ secrets.CFTC_APP_TOKEN }}
+          CFTC_JOB_OWNER: ${{ inputs.owner }}
+          CFTC_FORCE_REFRESH: ${{ inputs.full_refresh }}

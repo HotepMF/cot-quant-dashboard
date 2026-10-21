@@ -71,7 +71,7 @@ export async function stageHistories(db: Sql, owner: string, report: ReportKey, 
   ]);
 }
 
-export async function commitRun(db: Sql, owner: string, report: ReportKey) {
+export async function commitRun(db: Sql, owner: string, report: ReportKey, requirePrepared = false) {
   await renewLease(db, owner);
   const run = await getRun(db, owner, report);
   if (!run) throw new Error("Report scan was not initialized.");
@@ -80,11 +80,14 @@ export async function commitRun(db: Sql, owner: string, report: ReportKey) {
   if (count?.n !== run.markets.length) throw new Error("Incomplete scan cannot replace the last saved snapshot.");
   const newer = await statement(db, "SELECT 1 FROM cot_snapshots WHERE report=? AND report_as_of>?", report, run.report_as_of).first();
   if (newer) throw new Error("A newer official snapshot is already saved.");
+  const preparedGuard = requirePrepared
+    ? "AND EXISTS(SELECT 1 FROM cot_cf_signals WHERE run_id=r.id) AND (SELECT count(*) FROM cot_cf_public_histories p WHERE p.run_id=r.id)=json_array_length(r.markets)"
+    : "";
   // A pointer swap commits the report atomically, without building a multi-MB JSON
   // row (D1 has a 2MB row limit). Immutable per-market histories stay in place.
   await db.batch([
     leaseGuard(db, owner, `EXISTS(SELECT 1 FROM cot_cf_runs r WHERE r.id=? AND r.state='loading'
-      AND (SELECT count(*) FROM cot_cf_histories h WHERE h.run_id=r.id)=json_array_length(r.markets))
+      AND (SELECT count(*) FROM cot_cf_histories h WHERE h.run_id=r.id)=json_array_length(r.markets) ${preparedGuard})
       AND NOT EXISTS(SELECT 1 FROM cot_snapshots WHERE report=? AND report_as_of>?)`, [run.id, report, run.report_as_of]),
     statement(db, `INSERT INTO cot_snapshots(report,report_as_of,checked_at,run_id) VALUES(?,?,${NOW},?)
       ON CONFLICT(report) DO UPDATE SET report_as_of=excluded.report_as_of,checked_at=excluded.checked_at,run_id=excluded.run_id`,
@@ -98,7 +101,7 @@ export async function failRun(db: Sql, owner: string, report: ReportKey) {
   await db.batch([
     leaseGuard(db, owner),
     statement(db, `UPDATE cot_cf_runs SET state='error',
-      error='Official CFTC collection failed. Last complete saved data has been retained.',updated_at=${NOW} WHERE id=?`, `${owner}:${report}`),
+      error='Official CFTC collection failed. Last complete saved data has been retained.',updated_at=${NOW} WHERE id=? AND state='loading'`, `${owner}:${report}`),
   ]);
 }
 
@@ -122,7 +125,11 @@ const asView = (r: ReturnType<typeof runValue>, status = r.state): View => ({
   processed: r.processed, startedAt: iso(r.started_at)!, updatedAt: iso(r.updated_at)!, message: r.error,
 });
 
-export async function viewMetadata(db: Sql, report: ReportKey): Promise<View | null> {
+export async function viewMetadata(db: Sql, report: ReportKey, savedFirst = false): Promise<View | null> {
+  if (savedFirst) {
+    const saved = await statement(db, "SELECT r.* FROM cot_snapshots s JOIN cot_cf_runs r ON r.id=s.run_id WHERE s.report=?", report).first<StoredRun>();
+    if (saved) return asView(runValue(saved), "ready");
+  }
   const active = await statement(db, `SELECT r.* FROM cot_cf_runs r JOIN cot_cf_leases l ON l.owner=r.owner AND l.id=?
     WHERE r.report=? AND r.state='loading' AND l.expires_at>${NOW} ORDER BY r.started_at DESC LIMIT 1`, JOB_ID, report).first<StoredRun>();
   if (active) return asView(runValue(active));
