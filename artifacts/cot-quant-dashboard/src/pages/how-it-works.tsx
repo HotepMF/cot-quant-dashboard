@@ -34,7 +34,7 @@ export function HowItWorksPage() {
         <div>
           <div className="eyebrow" style={{ marginBottom: 9 }}>Reference</div>
           <h1 className="page-title display">How it works</h1>
-          <p className="subtle scan-lede">What the COT report is, how this site reads it, which markets it shows, and what it can't tell you.</p>
+          <p className="subtle scan-lede">What the COT report is, how this site reads it, which markets it shows, how the SPDR sectors page works, when data updates, and what it can't tell you.</p>
         </div>
         <div className="toolbar print-hidden">
           <button className="icon-btn" aria-label="Toggle dark mode" title="Toggle theme" onClick={() => setIsDark(v => !v)}>{isDark ? <Sun size={15} /> : <Moon size={15} />}</button>
@@ -42,7 +42,7 @@ export function HowItWorksPage() {
       </header>
 
       <nav className="hiw-toc print-hidden" aria-label="On this page">
-        {[["cot", "The COT report"], ["reading", "Reading the site"], ["markets", "Which markets"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
+        {[["cot", "The COT report"], ["reading", "Reading the site"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
           <a key={id} href={`#${id}`} className="ms-chip" onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</a>)}
       </nav>
 
@@ -75,6 +75,28 @@ export function HowItWorksPage() {
           <p><b>Quality labels.</b> The CFTC only publishes a market when at least 20 large traders hold reportable positions. <b>Thin</b> ({thin}) means few reporting traders or a short history: read with care. <b>Not published</b>: COMEX aluminum (ALI) rarely meets the 20-trader rule, and the dollar Nikkei (NKD) dropped out in March 2026, so the site shows the yen Nikkei instead.</p>
         </Section>
 
+        <Section id="sectors" title="SPDR sectors">
+          <p>The <Link href="/sectors">SPDR sectors</Link> page connects positioning to the stock market: each of the 11 Select Sector SPDR ETFs against the S&amp;P 500 (SPY), with the futures positioning underneath it.</p>
+          <ul>
+            <li><b>Performance</b>: each sector's move relative to SPY over 1 day, 1 week, 1 month, 3 months and 1 year.</li>
+            <li><b>How unusual (σ)</b>: how far the 3-month and 1-year relative moves sit from the sector's own norm over the past three years. 2σ or more is rare and shown in amber.</li>
+            <li><b>Momentum</b>: the last 4 weeks against that norm. ▲ rising, ► flat or ▼ falling, with "turning up" or "fading" when it differs from the 3-month trend. Our tests found no reliable tendency for sector trends to continue or reverse.</li>
+            <li><b>Underneath</b>: the futures linked to each sector, such as crude, gasoline and diesel for energy, copper for industrials, power and gas for utilities, and Nasdaq-100 for tech. Health care, staples and discretionary have no clean futures link and are shown on price only.</li>
+            <li><b>Positioning monitor</b>: where funds sit in their 3-year range, as a percentile. Funds are managed money for commodities and leveraged funds for financial futures, shown against producers or asset managers. The 90th percentile or above, or the 10th or below, is labeled crowded. A low reading can still be a net long.</li>
+          </ul>
+          <p>Panel text is generated from the numbers each day and describes what is happening, not what comes next.</p>
+        </Section>
+
+        <Section id="updates" title="Data & updates">
+          <ul>
+            <li><b>Nothing here is real-time.</b> The site shows end-of-day and weekly data, built for understanding the backdrop, not for timing trades.</li>
+            <li><b>COT positioning</b>: weekly. Positions as of Tuesday are published Friday at 3:30 p.m. ET, and the site checks for the release automatically.</li>
+            <li><b>Sector and futures prices</b>: end of day, updated on weekday evenings after the U.S. close. During the trading day the page shows the previous close. The page header shows both dates, for example "Prices Oct 21 close · CFTC Oct 13".</li>
+            <li><b>If prices stop updating</b>, the page shows a warning with the last update date instead of quietly showing old numbers.</li>
+            <li><b>Sources</b>: CFTC Commitments of Traders (Legacy, Disaggregated and Traders in Financial Futures); end-of-day prices from Yahoo Finance; Treasury yields from the U.S. Treasury's daily par yield curve.</li>
+          </ul>
+        </Section>
+
         <Section id="consolidated" title="Consolidated lines">
           <p>For the S&amp;P 500, Nasdaq-100 and Dow, the CFTC publishes each contract separately (E-mini, micro, Dow x$5) <b>and</b> a <b>consolidated</b> line that adds them together, counting each micro as one-tenth of an E-mini. The site uses the consolidated line, because that is the whole market's positioning.</p>
           <p>The single contracts are still available in Advanced, marked "Part of … consolidated". They tell nearly the same story: the E-mini alone is about 99% of the S&amp;P consolidated total. The trade-off is history: consolidated lines start in June 2010.</p>
@@ -101,7 +123,7 @@ export function HowItWorksPage() {
       </div>
 
       <footer className="scan-foot">
-        <span>Source: CFTC Commitments of Traders, Legacy Futures Only and Combined.</span>
+        <span>Sources: CFTC Commitments of Traders; end-of-day prices from Yahoo Finance; U.S. Treasury yields.</span>
         <span>Setups are mechanical rule states, not recommendations.</span>
       </footer>
     </main>
