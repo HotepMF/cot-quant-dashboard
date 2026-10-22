@@ -16,4 +16,12 @@
 .ih-part td:nth-child(2) { color:hsl(var(--muted-foreground)); }
 .ih-crowd { color:#e6a752; }
 .ih-withheld { color:hsl(var(--muted-foreground));font-style:italic;text-align:center !important; }
+.ih-pts { color:hsl(var(--muted-foreground));font-size:10.5px; }
+.ih-ranges { min-width:420px !important; }
+.ih-cal { min-width:0 !important;table-layout:fixed; }
+.ih-cal td { white-space:normal !important;vertical-align:top; }
+.ih-cd { width:96px;font:11px var(--app-font-mono);color:hsl(var(--muted-foreground)); }
+.ih-sub { display:block;font-size:11px;color:hsl(var(--muted-foreground));margin-top:2px; }
+.ih-wide { color:#e6a752;font-weight:500; }
+.ih-crowdtab { min-width:560px !important; }
 @media(max-width:760px) { .ih-cards { grid-template-columns:minmax(0,1fr); } }
