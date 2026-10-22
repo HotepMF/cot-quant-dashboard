@@ -292,7 +292,7 @@ function Dashboard() {
     });
   }
   function resetData() {
-    setIsImported(false); setUploadError(""); setUploadMessage("Switched back to CFTC live data.");
+    setIsImported(false); setUploadError(""); setUploadMessage("Switched back to the official CFTC data.");
     try { localStorage.removeItem(STORAGE_DATA); } catch { /* storage unavailable */ }
     if (fileRef.current) fileRef.current.value = "";
     if (historyQuery.data?.rows.length) {
@@ -393,7 +393,7 @@ function Dashboard() {
           <div className="eyebrow" style={{ marginBottom: 9 }}>Positioning intelligence <span style={{ margin: "0 6px" }}>/</span> {isImported ? "Local CSV" : effectiveMarket?.name ?? "CFTC markets"}</div>
           <h1 className="page-title display">COT Quant Dashboard</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 9, flexWrap: "wrap" }}>
-            <span className={`badge ${isImported ? "good" : liveFailure ? "bad" : liveActive && !isReportStale ? "good" : "warn"}`} data-testid="status-data-mode"><span className="dot" style={{ background: isImported ? "#69c8a7" : liveFailure ? "#e27667" : liveActive && !isReportStale ? "#69c8a7" : "#e6a752" }} />{isImported ? "Local CSV import" : liveFailure ? "CFTC request failed" : liveActive && isReportStale ? "CFTC report may be stale" : liveActive ? "CFTC live data" : "Illustrative demo fallback"}</span>
+            <span className={`badge ${isImported ? "good" : liveFailure ? "bad" : liveActive && !isReportStale ? "good" : "warn"}`} data-testid="status-data-mode"><span className="dot" style={{ background: isImported ? "#69c8a7" : liveFailure ? "#e27667" : liveActive && !isReportStale ? "#69c8a7" : "#e6a752" }} />{isImported ? "Local CSV import" : liveFailure ? "CFTC request failed" : liveActive && isReportStale ? "CFTC report may be stale" : liveActive ? "Official CFTC data · weekly" : "Illustrative demo fallback"}</span>
             <span className="subtle" style={{ fontSize: 12 }}>{computed.length} weekly observations · latest report date {latest ? formatDate(latest.date) : "—"}</span>
           </div>
         </div>
@@ -409,7 +409,7 @@ function Dashboard() {
         <div className="source-copy">
           <strong>{isImported ? "Local CSV is active" : liveFailure ? "CFTC source unavailable" : liveActive ? "Official CFTC source" : "CFTC source status"}</strong>
           <span>{isImported
-            ? "Periodic CFTC checks will not replace this import. Switch back when you want the live report."
+            ? "Periodic CFTC checks will not replace this import. Switch back when you want the official CFTC report."
             : liveFailure
               ? `${historyQuery.isError ? "Weekly history request" : "Market list request"} failed${historyQuery.error instanceof Error ? `: ${historyQuery.error.message}` : marketsQuery.error instanceof Error ? `: ${marketsQuery.error.message}` : "."} ${liveActive ? "Existing returned CFTC history remains displayed with its original report date." : "Any displayed rows remain clearly labelled illustrative fallback, not current CFTC data."}`
               : liveActive
@@ -583,7 +583,7 @@ function Dashboard() {
                 <div className="field"><label htmlFor="market-label">CSV dataset label (optional)</label><input id="market-label" className="input" placeholder="e.g. S&amp;P 500 E-mini" value={settings.marketLabel} onChange={e => setSetting("marketLabel", e.target.value.slice(0, 80))} data-testid="input-market-label" /></div>
                 <div className="field"><label htmlFor="report-type">CSV report type</label><select id="report-type" className="select" value={settings.reportType} onChange={e => setSetting("reportType", e.target.value)} data-testid="select-report-type"><option>Legacy Futures Only</option><option>Legacy Combined</option></select></div>
                 <div className="notice">These labels describe the imported CSV. The selected report data itself is not transformed.</div>
-              </> : <div className="notice">Live source: official CFTC Legacy reports. Choose the report and market above; the dashboard loads the weekly history automatically.</div>}
+              </> : <div className="notice">Source: official CFTC Legacy reports, published weekly. Choose the report and market above; the dashboard loads the weekly history automatically.</div>}
               <div className="field"><label htmlFor="participant-type">Participant for Z-score signals</label><select id="participant-type" className="select" value={settings.participant} onChange={e => setSetting("participant", e.target.value)} data-testid="select-participant"><option>Large Traders</option><option>Small Traders</option><option>Commercial Hedgers</option></select></div>
               <div className="field"><label htmlFor="signal-mode">Signal mode</label><select id="signal-mode" className="select" value={settings.signalMode} onChange={e => setSetting("signalMode", e.target.value)} data-testid="select-signal-mode"><option>Z-Score Only</option><option>COT Confluence</option><option>Both (AND gate)</option></select></div>
             </div>
