@@ -17,11 +17,12 @@ export const CORE_GROUPS = [
 ] as const;
 
 export type CoreGroup = typeof CORE_GROUPS[number]["id"];
+export type CuratedGroup = CoreGroup | "specialty";
 /** good: deep and liquid; ok: usable; thin: few reporting traders or short history; unavailable: not published. */
 export type CoreQuality = "good" | "ok" | "thin" | "unavailable";
 export type CoreMarket = {
   symbol: string;
-  group: CoreGroup;
+  group: CuratedGroup;
   /** CFTC contract market code; null when the CFTC does not publish the market. */
   code: string | null;
   label: string;
@@ -77,9 +78,24 @@ export const CORE_MARKETS: CoreMarket[] = [
   { symbol: "LBR", group: "softs", code: "058644", label: "Lumber", quality: "thin", note: "New contract since Aug 2022; about three years of history." },
 ];
 
+/** Picker-only extras that tie into the site's analysis; not part of the core scanners. note = why it is here. */
+export const SPECIALTY_MARKETS: CoreMarket[] = [
+  { symbol: "PJM", group: "specialty", code: "0643DF", label: "PJM West power (peak)", quality: "ok", note: "The grid serving the largest data-center cluster; see The Invisible Hand." },
+  { symbol: "ERCOT", group: "specialty", code: "06439R", label: "ERCOT North power (peak)", quality: "ok", note: "Texas power, where AI and crypto load is growing fastest." },
+  { symbol: "CAISO", group: "specialty", code: "064395", label: "CAISO SP-15 power (peak)", quality: "ok", note: "Southern California power; solar-heavy grid." },
+  { symbol: "SR3", group: "specialty", code: "134741", label: "SOFR 3-month", quality: "good", note: "Where funds bet on the Fed path." },
+  { symbol: "TN", group: "specialty", code: "043607", label: "Ultra 10-year Treasury", quality: "good", note: "Larger share of real-money duration than the classic 10-year." },
+  { symbol: "UB", group: "specialty", code: "020604", label: "Ultra Treasury bond", quality: "good", note: "Long-end duration; now larger than the classic bond." },
+  { symbol: "BZ", group: "specialty", code: "06765T", label: "Brent (NYMEX)", quality: "thin", note: "ICE Brent, the main contract, is not in the CFTC reports; this is NYMEX's Brent." },
+  { symbol: "MBT", group: "specialty", code: "133742", label: "Micro bitcoin", quality: "ok", note: "More reporting traders than the full-size contract." },
+  { symbol: "MET", group: "specialty", code: "146022", label: "Micro ether", quality: "ok", note: "More reporting traders than the full-size contract." },
+];
+
 export const coreMarketByCode = new Map(CORE_MARKETS.filter(m => m.code).map(m => [m.code!, m]));
+/** Core plus specialty: everything the picker shows without an advanced search. */
+export const curatedMarketByCode = new Map([...CORE_MARKETS, ...SPECIALTY_MARKETS].filter(m => m.code).map(m => [m.code!, m]));
 /** Extra search terms for a market's official code: its watchlist symbol and plain-English label. */
-export const coreAliases = (code: string) => { const m = coreMarketByCode.get(code); return m ? `${m.symbol} ${m.label}` : ""; };
+export const coreAliases = (code: string) => { const m = curatedMarketByCode.get(code); return m ? `${m.symbol} ${m.label}` : ""; };
 
 /**
  * History repairs applied when collecting by contract code, for every published market that needs one.

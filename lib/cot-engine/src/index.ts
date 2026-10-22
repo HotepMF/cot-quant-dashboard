@@ -87,8 +87,8 @@ export function computeRows(raw: RawRow[], settings: SignalSettings, latestOnly 
 }
 
 export { parseSignalSettings, signalMarket } from "./signals";
-export { CORE_GROUPS, CORE_MARKETS, HISTORY_RULES, coreAliases, coreMarketByCode } from "./core-markets";
-export type { CoreGroup, CoreMarket, CoreQuality } from "./core-markets";
+export { CORE_GROUPS, CORE_MARKETS, HISTORY_RULES, SPECIALTY_MARKETS, coreAliases, coreMarketByCode, curatedMarketByCode } from "./core-markets";
+export type { CoreGroup, CoreMarket, CoreQuality, CuratedGroup } from "./core-markets";
 
 /** Descriptive rule extremity, never a probability or a prediction of returns. */
 export function setupScore(row: CalcRow, settings: SignalSettings) {

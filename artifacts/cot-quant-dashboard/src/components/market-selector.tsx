@@ -1,14 +1,13 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
-import { CORE_GROUPS, CORE_MARKETS, coreAliases, coreMarketByCode } from "@workspace/cot-engine";
+import { CORE_GROUPS, CORE_MARKETS, SPECIALTY_MARKETS, coreAliases, curatedMarketByCode } from "@workspace/cot-engine";
 import { MARKET_SECTORS, buildMarketCatalog, filterMarketCatalog } from "@/lib/market-catalog";
 import type { CatalogMarket, MarketSector } from "@/lib/market-catalog";
-import { useMarketScope } from "@/lib/settings-store";
-import { MarketScopeToggle } from "@/components/market-scope-toggle";
 import "./market-selector.css";
 
-const coreOrder = new Map(CORE_MARKETS.map((m, i) => [m.code, i]));
+const curatedOrder = new Map([...CORE_MARKETS, ...SPECIALTY_MARKETS].map((m, i) => [m.code, i]));
+const CURATED_GROUPS = [...CORE_GROUPS, { id: "specialty", label: "Specialty" }] as const;
 
 type Props = {
   markets: { name: string; code: string }[];
@@ -33,15 +32,16 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const [scope, setScope] = useMarketScope();
+  // Curated (core + specialty) by default; every published market only through an explicit advanced search.
+  const [advanced, setAdvanced] = useState(false);
   const catalog = useMemo(() => buildMarketCatalog(markets, coreAliases), [markets]);
-  const coreCatalog = useMemo(() => catalog.filter(m => coreMarketByCode.has(m.code)), [catalog]);
-  const pool = scope === "core" ? coreCatalog : catalog;
+  const curatedCatalog = useMemo(() => catalog.filter(m => curatedMarketByCode.has(m.code)), [catalog]);
+  const pool = advanced ? catalog : curatedCatalog;
   const selected = useMemo(() => catalog.find(m => m.name === value), [catalog, value]);
-  const selectedCore = selected && coreMarketByCode.get(selected.code);
+  const selectedCore = selected && curatedMarketByCode.get(selected.code);
   const searched = useMemo(() => filterMarketCatalog(pool, query, "all"), [pool, query]);
   const searchedAll = useMemo(() => filterMarketCatalog(catalog, query, "all"), [catalog, query]);
-  const results = useMemo(() => filterMarketCatalog(pool, query, scope === "core" ? "all" : sector), [pool, query, sector, scope]);
+  const results = useMemo(() => filterMarketCatalog(pool, query, advanced ? sector : "all"), [pool, query, sector, advanced]);
   const counts = useMemo(() => {
     const c = new Map<string, number>();
     for (const m of searched) c.set(m.sector, (c.get(m.sector) ?? 0) + 1);
@@ -49,10 +49,10 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
   }, [searched]);
   const groups = useMemo(() => {
     const out: { id: string; label: string; items: CatalogMarket[] }[] = [];
-    if (scope === "core") {
-      for (const g of CORE_GROUPS) {
-        const items = results.filter(m => coreMarketByCode.get(m.code)?.group === g.id)
-          .sort((a, b) => (coreOrder.get(a.code) ?? 0) - (coreOrder.get(b.code) ?? 0));
+    if (!advanced) {
+      for (const g of CURATED_GROUPS) {
+        const items = results.filter(m => curatedMarketByCode.get(m.code)?.group === g.id)
+          .sort((a, b) => (curatedOrder.get(a.code) ?? 0) - (curatedOrder.get(b.code) ?? 0));
         if (items.length) out.push({ id: g.id, label: g.label, items });
       }
       return out;
@@ -62,7 +62,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
       if (items.length) out.push({ id: s.id, label: s.label, items });
     }
     return out;
-  }, [results, scope]);
+  }, [results, advanced]);
   const flat = useMemo(() => groups.flatMap(g => g.items), [groups]);
 
   const isDisabled = disabled || (!markets.length && !loading) || (loading && !markets.length);
@@ -76,6 +76,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
     setOpen(false);
     setQuery("");
     setSector("all");
+    setAdvanced(false);
     if (refocus) triggerRef.current?.focus();
   };
   const choose = (m: CatalogMarket) => {
@@ -86,12 +87,13 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
+    if (selected && !curatedMarketByCode.has(selected.code)) setAdvanced(true);
     const idx = flat.findIndex(m => m.name === value);
     setActive(idx >= 0 ? idx : 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  useEffect(() => { setActive(0); }, [query, sector, scope]);
+  useEffect(() => { setActive(0); }, [query, sector, advanced]);
 
   useEffect(() => {
     if (!open) return;
@@ -215,10 +217,13 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
             )}
           </div>
 
-          <div className="ms-sectors">
-            <MarketScopeToggle coreCount={coreCatalog.length} allCount={catalog.length} />
-          </div>
-          {scope === "all" && <div className="ms-sectors" role="toolbar" aria-label="Filter by sector">
+          {advanced && (
+            <div className="ms-advanced" role="note">
+              <span>All {catalog.length} CFTC markets. Not curated; some are thinly traded.</span>
+              <button type="button" className="btn" onClick={() => { setAdvanced(false); setSector("all"); inputRef.current?.focus(); }} data-testid="button-market-curated">Back to curated</button>
+            </div>
+          )}
+          {advanced && <div className="ms-sectors" role="toolbar" aria-label="Filter by sector">
             {(["all", ...MARKET_SECTORS.map(s => s.id)] as SectorFilter[]).map((id, i) => {
               const label = id === "all" ? "All" : MARKET_SECTORS.find(s => s.id === id)!.label;
               const n = id === "all" ? searched.length : counts.get(id) ?? 0;
@@ -250,10 +255,11 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
                   running += 1;
                   const i = running;
                   const isSel = m.name === value;
-                  const core = scope === "core" ? coreMarketByCode.get(m.code) : undefined;
+                  const core = advanced ? undefined : curatedMarketByCode.get(m.code);
                   return (
                     <div
                       key={`${m.code}:${m.name}`}
+                      title={core?.note}
                       id={optId(i)}
                       role="option"
                       aria-selected={isSel}
@@ -283,12 +289,12 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
                 <b>No markets match{query ? ` “${query}”` : ""}{sector !== "all" ? ` in ${MARKET_SECTORS.find(s => s.id === sector)?.label}` : ""}.</b>
                 <span>Try an exchange (CME, ICE), a contract code, or a common alias like “gold” or “ES”.</span>
                 <div className="ms-empty-actions">
-                  {scope === "core" && query && searchedAll.length > 0 && (
-                    <button type="button" className="btn" onClick={() => { setScope("all"); inputRef.current?.focus(); }} data-testid="button-market-search-all">
-                      Search all markets ({searchedAll.length})
+                  {!advanced && query && searchedAll.length > 0 && (
+                    <button type="button" className="btn" onClick={() => { setAdvanced(true); inputRef.current?.focus(); }} data-testid="button-market-search-all">
+                      Search all CFTC markets ({searchedAll.length})
                     </button>
                   )}
-                  {scope === "all" && sector !== "all" && searched.length > 0 && (
+                  {advanced && sector !== "all" && searched.length > 0 && (
                     <button type="button" className="btn" onClick={() => { setSector("all"); inputRef.current?.focus(); }} data-testid="button-market-all-sectors">
                       Search all sectors ({searched.length})
                     </button>
@@ -304,7 +310,9 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
           </div>
 
           <div className="ms-foot" aria-live="polite">
-            <span>{flat.length} of {pool.length} markets{scope === "core" ? " · ALI: not published by the CFTC" : ""}</span>
+            {advanced
+              ? <span>{flat.length} of {pool.length} markets</span>
+              : <span>{flat.length} curated · <button type="button" className="ms-link" onClick={() => { setAdvanced(true); inputRef.current?.focus(); }} data-testid="button-market-advanced">Advanced: all CFTC markets</button></span>}
             <span className="ms-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>Enter</kbd> select <kbd>Esc</kbd> close</span>
           </div>
         </div>

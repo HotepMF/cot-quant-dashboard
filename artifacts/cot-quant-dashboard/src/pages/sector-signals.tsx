@@ -2,9 +2,6 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ListOrdered } from "lucide-react";
 import { CORE_GROUPS, coreMarketByCode } from "@workspace/cot-engine";
-import { MARKET_SECTORS } from "@/lib/market-catalog";
-import { useMarketScope } from "@/lib/settings-store";
-import { MarketScopeToggle } from "@/components/market-scope-toggle";
 import { useScreener } from "@/hooks/use-screener";
 import { MarketTable, TableSkeleton, sortRows } from "@/components/scanner/market-table";
 import { ScannerShell, ScoreExplainer } from "@/components/scanner/scanner-shell";
@@ -12,12 +9,9 @@ import { ScannerShell, ScoreExplainer } from "@/components/scanner/scanner-shell
 export function SectorSignalsPage() {
   const s = useScreener();
   const [activeOnly, setActiveOnly] = useState(false);
-  const [scope] = useMarketScope();
+  // The scanners cover the core watchlist only; the rest of the report stays in the backend and advanced search.
   const coreRows = useMemo(() => s.rows.filter(r => coreMarketByCode.has(r.code)), [s.rows]);
-  const groups = useMemo(() => (scope === "core"
-    ? CORE_GROUPS.map(g => ({ id: g.id as string, label: g.label, all: coreRows.filter(r => coreMarketByCode.get(r.code)!.group === g.id) }))
-    : MARKET_SECTORS.map(sec => ({ id: sec.id as string, label: sec.label, all: s.rows.filter(r => r.sector === sec.id) }))
-  ).map(sec => {
+  const groups = useMemo(() => CORE_GROUPS.map(g => ({ id: g.id as string, label: g.label, all: coreRows.filter(r => coreMarketByCode.get(r.code)!.group === g.id) })).map(sec => {
     const all = sec.all;
     const active = sortRows(all.filter(r => r.flagged), "setupScore", true);
     const rest = sortRows(all.filter(r => !r.flagged), "label", false);
@@ -30,12 +24,11 @@ export function SectorSignalsPage() {
       pending: all.filter(r => r.status === "loading").length,
       unavailable: all.filter(r => r.status !== "ready" && r.status !== "loading").length,
     };
-  }).filter(g => g.all.length), [s.rows, coreRows, scope]);
+  }).filter(g => g.all.length), [coreRows]);
   const totals = groups.reduce((t, g) => ({ bull: t.bull + g.bull, bear: t.bear + g.bear, ready: t.ready + g.ready, all: t.all + g.all.length }), { bull: 0, bear: 0, ready: 0, all: 0 });
   const jump = (id: string) => document.getElementById(`sector-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  return <ScannerShell screener={s} eyebrow="All-market scan / Sector signals" title="Sector signals" lede={scope === "core" ? "The core watchlist markets, grouped like the watchlist, evaluated with the same rule set as the detail view." : "Every market in the official report, grouped by sector, evaluated with the same rule set as the detail view."}>
-    <div className="scan-bar print-hidden"><MarketScopeToggle coreCount={coreRows.length} allCount={s.rows.length} /></div>
+  return <ScannerShell screener={s} eyebrow="All-market scan / Sector signals" title="Sector signals" lede="The core watchlist markets, grouped like the watchlist, evaluated with the same rule set as the detail view.">
     <div className="scan-tally fade-in">
       <div><span className="eyebrow">Bullish setups</span><b className="mono change-up" data-testid="count-bullish">{totals.bull}</b></div>
       <div><span className="eyebrow">Bearish setups</span><b className="mono change-down" data-testid="count-bearish">{totals.bear}</b></div>
