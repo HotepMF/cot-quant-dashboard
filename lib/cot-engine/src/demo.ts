@@ -16,6 +16,8 @@
  * Size     one full-size contract per trade; P&L in dollars before commissions and slippage.
  */
 export const DEMO_RULES_VERSION = 1;
+/** Account format; v1 accounts could place their first orders for a week already under way, so they restart clean. */
+export const DEMO_STATE_VERSION = 2;
 export const DEMO_TARGET_SIGMA = 2;
 export const DEMO_START_BALANCE = 100_000;
 
@@ -85,7 +87,7 @@ export type DemoState = {
 export type DemoPayload = DemoState & { updatedAt: string; filtersNow: { code: string; symbol: string; dir: 1 | -1; week: string }[] };
 
 export const emptyDemo = (): DemoState => ({
-  version: 1, rulesVersion: DEMO_RULES_VERSION, startedWeek: null, lastWeek: null, startBalance: DEMO_START_BALANCE,
+  version: DEMO_STATE_VERSION, rulesVersion: DEMO_RULES_VERSION, startedWeek: null, lastWeek: null, startBalance: DEMO_START_BALANCE,
   markets: {}, trades: [], equity: [], skipped: [],
 });
 
@@ -169,12 +171,18 @@ export function stepMarket(m: typeof DEMO_MARKETS[number], state: DemoMarketStat
 
 /**
  * Advance the account through every completed week after `state.lastWeek`. `bars` per code (oldest first, completed
- * weeks only); `filters` per code and week. The first call starts the account at the latest completed week.
+ * weeks only); `filters` per code and week. A new account only records the latest completed week as its starting
+ * point: the week after it may already be under way, so its first orders come at the next completed week, for the
+ * full week that follows (no order can use prices from before it was published).
  */
 export function advanceDemo(prev: DemoState, bars: Record<string, WeekBar[]>, filters: Record<string, Record<string, 1 | -1 | 0>>): DemoState {
   const state: DemoState = JSON.parse(JSON.stringify(prev));
   const weeks = [...new Set(Object.values(bars).flatMap(b => b.map(x => x.week)))].sort();
-  const todo = state.lastWeek ? weeks.filter(w => w > state.lastWeek!) : weeks.slice(-1);
+  if (!state.lastWeek) {
+    state.lastWeek = weeks.at(-1) ?? null;
+    return state;
+  }
+  const todo = weeks.filter(w => w > state.lastWeek!);
   for (const week of todo) {
     const skipped: string[] = [];
     for (const m of DEMO_MARKETS) {
