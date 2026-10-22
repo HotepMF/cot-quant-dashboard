@@ -196,7 +196,7 @@ function Dashboard() {
     { query: { queryKey: getGetCotMarketsQueryKey({ report: liveReport }), enabled: !isImported, refetchOnMount: "always", refetchInterval: releaseWindowActive ? 60_000 : 5 * 60_000 } },
   );
   const marketList = marketsQuery.data?.markets ?? [];
-  const preferredMarket = marketList.find(m => /E-MINI S&P 500/i.test(m.name));
+  const preferredMarket = marketList.find(m => m.code === "13874+") ?? marketList.find(m => /E-MINI S&P 500/i.test(m.name));
   const effectiveMarket = marketList.find(m => m.name === selectedMarket) ?? preferredMarket ?? marketList[0];
   const historyQuery = useGetCotMarketHistory(
     { report: liveReport, market: effectiveMarket?.name ?? "" },

@@ -133,11 +133,12 @@ function exchangeAliases(exchange: string) {
   return exchange;
 }
 
-export function buildMarketCatalog(markets: { name: string; code: string }[]): CatalogMarket[] {
+/** extraAliases lets callers add search terms per official code (e.g. core watchlist symbols). */
+export function buildMarketCatalog(markets: { name: string; code: string }[], extraAliases?: (code: string) => string): CatalogMarket[] {
   return markets.map(market => {
     const { instrument, exchange } = splitName(market.name);
     const sector = classify(instrument, exchange);
-    const aliases = aliasRules.filter(rule => rule.test.test(instrument)).map(rule => rule.aliases).join(" ");
+    const aliases = [...aliasRules.filter(rule => rule.test.test(instrument)).map(rule => rule.aliases), extraAliases?.(market.code) ?? ""].join(" ");
     const sectorLabel = MARKET_SECTORS.find(item => item.id === sector)!.label;
     return {
       ...market,

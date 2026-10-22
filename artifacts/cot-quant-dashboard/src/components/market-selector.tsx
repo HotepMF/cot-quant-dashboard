@@ -1,9 +1,14 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
+import { CORE_GROUPS, CORE_MARKETS, coreAliases, coreMarketByCode } from "@workspace/cot-engine";
 import { MARKET_SECTORS, buildMarketCatalog, filterMarketCatalog } from "@/lib/market-catalog";
 import type { CatalogMarket, MarketSector } from "@/lib/market-catalog";
+import { useMarketScope } from "@/lib/settings-store";
+import { MarketScopeToggle } from "@/components/market-scope-toggle";
 import "./market-selector.css";
+
+const coreOrder = new Map(CORE_MARKETS.map((m, i) => [m.code, i]));
 
 type Props = {
   markets: { name: string; code: string }[];
@@ -28,10 +33,15 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const catalog = useMemo(() => buildMarketCatalog(markets), [markets]);
+  const [scope, setScope] = useMarketScope();
+  const catalog = useMemo(() => buildMarketCatalog(markets, coreAliases), [markets]);
+  const coreCatalog = useMemo(() => catalog.filter(m => coreMarketByCode.has(m.code)), [catalog]);
+  const pool = scope === "core" ? coreCatalog : catalog;
   const selected = useMemo(() => catalog.find(m => m.name === value), [catalog, value]);
-  const searched = useMemo(() => filterMarketCatalog(catalog, query, "all"), [catalog, query]);
-  const results = useMemo(() => filterMarketCatalog(catalog, query, sector), [catalog, query, sector]);
+  const selectedCore = selected && coreMarketByCode.get(selected.code);
+  const searched = useMemo(() => filterMarketCatalog(pool, query, "all"), [pool, query]);
+  const searchedAll = useMemo(() => filterMarketCatalog(catalog, query, "all"), [catalog, query]);
+  const results = useMemo(() => filterMarketCatalog(pool, query, scope === "core" ? "all" : sector), [pool, query, sector, scope]);
   const counts = useMemo(() => {
     const c = new Map<string, number>();
     for (const m of searched) c.set(m.sector, (c.get(m.sector) ?? 0) + 1);
@@ -39,12 +49,20 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
   }, [searched]);
   const groups = useMemo(() => {
     const out: { id: string; label: string; items: CatalogMarket[] }[] = [];
+    if (scope === "core") {
+      for (const g of CORE_GROUPS) {
+        const items = results.filter(m => coreMarketByCode.get(m.code)?.group === g.id)
+          .sort((a, b) => (coreOrder.get(a.code) ?? 0) - (coreOrder.get(b.code) ?? 0));
+        if (items.length) out.push({ id: g.id, label: g.label, items });
+      }
+      return out;
+    }
     for (const s of MARKET_SECTORS) {
       const items = results.filter(m => m.sector === s.id);
       if (items.length) out.push({ id: s.id, label: s.label, items });
     }
     return out;
-  }, [results]);
+  }, [results, scope]);
   const flat = useMemo(() => groups.flatMap(g => g.items), [groups]);
 
   const isDisabled = disabled || (!markets.length && !loading) || (loading && !markets.length);
@@ -73,7 +91,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  useEffect(() => { setActive(0); }, [query, sector]);
+  useEffect(() => { setActive(0); }, [query, sector, scope]);
 
   useEffect(() => {
     if (!open) return;
@@ -132,7 +150,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
     }
   };
 
-  const triggerLabel = selected?.label ?? (value || (loading ? "Loading markets…" : markets.length ? "Choose a market" : "No markets available"));
+  const triggerLabel = (selectedCore ? `${selectedCore.symbol} · ${selectedCore.label}` : selected?.label) ?? (value || (loading ? "Loading markets…" : markets.length ? "Choose a market" : "No markets available"));
   let running = -1;
 
   return (
@@ -197,7 +215,10 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
             )}
           </div>
 
-          <div className="ms-sectors" role="toolbar" aria-label="Filter by sector">
+          <div className="ms-sectors">
+            <MarketScopeToggle coreCount={coreCatalog.length} allCount={catalog.length} />
+          </div>
+          {scope === "all" && <div className="ms-sectors" role="toolbar" aria-label="Filter by sector">
             {(["all", ...MARKET_SECTORS.map(s => s.id)] as SectorFilter[]).map((id, i) => {
               const label = id === "all" ? "All" : MARKET_SECTORS.find(s => s.id === id)!.label;
               const n = id === "all" ? searched.length : counts.get(id) ?? 0;
@@ -217,7 +238,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
                 </button>
               );
             })}
-          </div>
+          </div>}
 
           <div className="ms-list" id={listId} role="listbox" aria-label="Markets" ref={listRef}>
             {groups.map(g => (
@@ -229,6 +250,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
                   running += 1;
                   const i = running;
                   const isSel = m.name === value;
+                  const core = scope === "core" ? coreMarketByCode.get(m.code) : undefined;
                   return (
                     <div
                       key={`${m.code}:${m.name}`}
@@ -244,8 +266,10 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
                        data-market-name={m.name}
                     >
                       <span className="ms-opt-main">
-                        <span className="ms-opt-name">{m.label}</span>
-                        <span className="ms-opt-meta">{m.exchange}</span>
+                        <span className="ms-opt-name">
+                          {core ? <><b className="mono">{core.symbol}</b> {core.label}{core.quality === "thin" && <span className="quality-pill" title={core.note}>thin</span>}</> : m.label}
+                        </span>
+                        <span className="ms-opt-meta">{core ? `${m.label} · ${m.exchange}` : m.exchange}</span>
                       </span>
                       <span className="ms-opt-code">{m.code}</span>
                       <Check size={13} className="ms-check" aria-hidden />
@@ -259,7 +283,12 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
                 <b>No markets match{query ? ` “${query}”` : ""}{sector !== "all" ? ` in ${MARKET_SECTORS.find(s => s.id === sector)?.label}` : ""}.</b>
                 <span>Try an exchange (CME, ICE), a contract code, or a common alias like “gold” or “ES”.</span>
                 <div className="ms-empty-actions">
-                  {sector !== "all" && searched.length > 0 && (
+                  {scope === "core" && query && searchedAll.length > 0 && (
+                    <button type="button" className="btn" onClick={() => { setScope("all"); inputRef.current?.focus(); }} data-testid="button-market-search-all">
+                      Search all markets ({searchedAll.length})
+                    </button>
+                  )}
+                  {scope === "all" && sector !== "all" && searched.length > 0 && (
                     <button type="button" className="btn" onClick={() => { setSector("all"); inputRef.current?.focus(); }} data-testid="button-market-all-sectors">
                       Search all sectors ({searched.length})
                     </button>
@@ -275,7 +304,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
           </div>
 
           <div className="ms-foot" aria-live="polite">
-            <span>{flat.length} of {catalog.length} markets</span>
+            <span>{flat.length} of {pool.length} markets{scope === "core" ? " · ALI: not published by the CFTC" : ""}</span>
             <span className="ms-keys"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>Enter</kbd> select <kbd>Esc</kbd> close</span>
           </div>
         </div>

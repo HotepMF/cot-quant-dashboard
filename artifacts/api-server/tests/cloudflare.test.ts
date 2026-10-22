@@ -46,7 +46,7 @@ test("Database failures become explicit, sanitized HTTP 503 responses", async ()
 test("Official history parsing preserves exact market names and safely quotes codes", async t => {
   let query = "";
   t.mock.method(globalThis, "fetch", async (url: URL) => {
-    query = url.searchParams.get("query")!;
+    query = url.searchParams.get("$query")!;
     return new Response(JSON.stringify([{
       cftc_contract_market_code: "01'2345", report_date_as_yyyy_mm_dd: "2026-10-13T00:00:00.000",
       large_traders: "11", commercial_hedgers: "-12", small_traders: "1", open_interest: "100",
@@ -65,6 +65,48 @@ test("History keeps observations published under a contract's earlier name", asy
   t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify([row("2022-02-01", true), row("2022-02-08", false), row("2026-10-13", false)])));
   const histories = await officialHistories("futures", "2026-10-13", [{ name: "UST 10Y NOTE - CHICAGO BOARD OF TRADE", code: "043602" }]);
   assert.deepEqual(histories.get("UST 10Y NOTE - CHICAGO BOARD OF TRADE")!.rows.map(r => r.date), ["2022-02-01", "2022-02-08", "2026-10-13"]);
+});
+
+test("Without an app token, or when it is rejected, the identical query goes to the v2 resource endpoint", async t => {
+  const calls: { path: string; query: string | null; token: string | null }[] = [];
+  let v3Status = 403;
+  t.mock.method(globalThis, "fetch", async (url: URL, init?: RequestInit) => {
+    const token = (init?.headers as Record<string, string>)["X-App-Token"] ?? null;
+    calls.push({ path: url.pathname, query: url.searchParams.get("query") ?? url.searchParams.get("$query"), token });
+    if (url.pathname.startsWith("/api/v3/") && v3Status !== 200) return new Response(null, { status: v3Status });
+    return new Response(JSON.stringify([{ report_date_as_yyyy_mm_dd: "2026-10-13T00:00:00.000" }]));
+  });
+  // The mock answers every query with a date row, so the market-list step rejects after the date query.
+  await assert.rejects(officialMarkets("futures", "app-token"));
+  assert.deepEqual(calls.slice(0, 2).map(c => c.path), ["/api/v3/views/6dca-aqww/query.json", "/resource/6dca-aqww.json"]);
+  assert.equal(calls[0].query, calls[1].query, "the fallback sends the same SoQL statement");
+  calls.length = 0;
+  await assert.rejects(officialMarkets("futures"));
+  assert.equal(calls[0].path, "/resource/6dca-aqww.json", "no token goes straight to the resource endpoint");
+  assert.equal(calls[0].token, null);
+  calls.length = 0; v3Status = 500;
+  await assert.rejects(officialMarkets("futures", "app-token"), /HTTP 500/, "server errors are not masked by the fallback");
+  assert.equal(calls.length, 1);
+});
+
+test("Predecessor codes are stitched into one history and unrelated early rows are trimmed", async t => {
+  let query = "";
+  const row = (code: string, date: string, large: string) => ({
+    cftc_contract_market_code: code, report_date_as_yyyy_mm_dd: `${date}T00:00:00.000`, large_traders: large, commercial_hedgers: "-1", small_traders: "0", open_interest: "10",
+  });
+  t.mock.method(globalThis, "fetch", async (url: URL) => {
+    query = url.searchParams.get("$query")!;
+    return new Response(JSON.stringify([
+      row("002601", "1997-12-30", "5"), row("002602", "1998-01-06", "6"), row("002602", "2026-10-13", "7"),
+      row("099741", "1986-01-15", "99"), row("099741", "1999-01-05", "1"), row("099741", "2026-10-13", "2"),
+    ]));
+  });
+  const histories = await officialHistories("futures", "2026-10-13", [
+    { name: "CORN - CHICAGO BOARD OF TRADE", code: "002602" }, { name: "EURO FX - CHICAGO MERCANTILE EXCHANGE", code: "099741" },
+  ]);
+  assert.match(query, /IN \('002602', '002601', '099741'\)/);
+  assert.deepEqual(histories.get("CORN - CHICAGO BOARD OF TRADE")!.rows.map(r => [r.date, r.large_traders]), [["1997-12-30", 5], ["1998-01-06", 6], ["2026-10-13", 7]]);
+  assert.deepEqual(histories.get("EURO FX - CHICAGO MERCANTILE EXCHANGE")!.rows.map(r => r.date), ["1999-01-05", "2026-10-13"], "1986 European Currency Unit rows are dropped");
 });
 
 test("Conflicting, invalid, and incomplete CFTC batches are rejected", async t => {

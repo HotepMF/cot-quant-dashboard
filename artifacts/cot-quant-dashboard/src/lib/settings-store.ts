@@ -52,6 +52,28 @@ export function useSharedSettings(): [Settings, typeof setSharedSettings] {
   return [value, setSharedSettings];
 }
 
+/** Which markets the picker and scanners lead with: the core watchlist, or every published market. */
+export type MarketScope = "core" | "all";
+export const STORAGE_MARKET_SCOPE = "cot-quant-market-scope-v1";
+let currentScope: MarketScope = (() => {
+  try { return localStorage.getItem(STORAGE_MARKET_SCOPE) === "all" ? "all" : "core"; } catch { return "core"; }
+})();
+const scopeListeners = new Set<() => void>();
+
+export function setMarketScope(scope: MarketScope) {
+  currentScope = scope;
+  try { localStorage.setItem(STORAGE_MARKET_SCOPE, scope); } catch { /* storage unavailable */ }
+  scopeListeners.forEach(l => l());
+}
+
+export function useMarketScope(): [MarketScope, typeof setMarketScope] {
+  const value = useSyncExternalStore(
+    listener => { scopeListeners.add(listener); return () => { scopeListeners.delete(listener); }; },
+    () => currentScope, () => currentScope,
+  );
+  return [value, setMarketScope];
+}
+
 export type LiveReport = "futures" | "combined";
 export function readLiveReport(): LiveReport {
   try { return localStorage.getItem(STORAGE_SOURCE) === "combined" ? "combined" : "futures"; } catch { return "futures"; }
