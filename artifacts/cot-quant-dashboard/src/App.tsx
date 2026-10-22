@@ -135,6 +135,23 @@ function Dashboard() {
   const latest = computed[computed.length - 1];
   const previous = computed[computed.length - 2];
   const visible = chartWeeks === 0 ? computed : computed.slice(-chartWeeks);
+  // The positioning chart shows what the model reads: net as % of open interest when the Z calculation is
+  // OI-normalised (the default), contracts otherwise; plus the lookback window and the selected participant's +/-Z band.
+  const oiNorm = settings.zMethod === "Open Interest Normalization";
+  const modelKey: MetricKey = settings.participant === "Large Traders" ? "large_traders" : settings.participant === "Small Traders" ? "small_traders" : "commercial_hedgers";
+  const asModel = (r: RawRow, k: MetricKey) => oiNorm ? (r.open_interest ? r[k] / r.open_interest * 100 : null) : r[k];
+  const chartRows = visible.map(r => oiNorm ? { ...r, large_traders: asModel(r, "large_traders"), small_traders: asModel(r, "small_traders"), commercial_hedgers: asModel(r, "commercial_hedgers") } : r);
+  const zBand = useMemo(() => {
+    const win = computed.slice(-settings.lookback);
+    if (!settings.zEnabled || win.length < settings.lookback) return null;
+    const vals = win.map(r => asModel(r, modelKey));
+    if (vals.some(v => v == null || !Number.isFinite(v))) return null;
+    const v = vals as number[], mean = v.reduce((a, b) => a + b, 0) / v.length;
+    const sd = Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / v.length);
+    return { start: win[0].date, end: win[win.length - 1].date, upper: mean + settings.zThreshold * sd, lower: mean - settings.zThreshold * sd };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [computed, settings.lookback, settings.zEnabled, settings.zThreshold, oiNorm, modelKey]);
+  const bandStart = zBand && visible.length ? (zBand.start < visible[0].date ? visible[0].date : zBand.start) : null;
   const tableRows = [...computed].reverse().slice(tablePage * 10, tablePage * 10 + 10);
   const participantStats = useMemo(() => metricKeys.map((key) => {
     const val = latest?.[key] ?? 0;
@@ -221,11 +238,11 @@ function Dashboard() {
   }));
   const exportButton = (name: string, records: Record<string, unknown>[] = exportRows()) => <button className="icon-btn print-hidden" title={`Export ${name} chart data as CSV`} aria-label={`Export ${name} chart data as CSV`} data-testid={`export-${name}-csv`} onClick={() => makeCsv(records, `cot-${name}.csv`)}><Download size={15} /></button>;
   const chartTick = { fill: "hsl(var(--muted-foreground))", fontSize: 11, fontFamily: "DM Mono" };
-  const TooltipBox = ({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number; color?: string }>; label?: string }) => {
+  const TooltipBox = ({ active, payload, label, unit = "" }: { active?: boolean; payload?: Array<{ name?: string; value?: number; color?: string }>; label?: string; unit?: string }) => {
     if (!active || !payload?.length) return null;
     return <div style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 7, padding: "10px 12px", color: "hsl(var(--foreground))", fontSize: 12 }}>
       <div style={{ fontFamily: "DM Mono", marginBottom: 6 }}>{label}</div>
-      {payload.map((p, i) => <div key={i} style={{ display: "flex", gap: 14, justifyContent: "space-between" }}><span style={{ color: p.color }}>{p.name}</span><b className="mono">{fmt(p.value)}</b></div>)}
+      {payload.map((p, i) => <div key={i} style={{ display: "flex", gap: 14, justifyContent: "space-between" }}><span style={{ color: p.color }}>{p.name}</span><b className="mono">{fmt(p.value, unit ? 1 : 0)}{unit}</b></div>)}
     </div>;
   };
   const getStatus = (cycle: number) => {
@@ -242,7 +259,7 @@ function Dashboard() {
   const signalPrefix = settings.signalMode === "Z-Score Only" ? "Z-score" : settings.signalMode === "Both (AND gate)" ? "AND-gate" : "confluence";
   const signalLabel = latest?.buy ? `Bullish ${signalPrefix}` : latest?.sell ? `Bearish ${signalPrefix}` : "No aligned signal";
   const signalTone = latest?.buy ? "good" : latest?.sell ? "bad" : "neutral";
-  const selectedPosition = latest ? (settings.participant === "Large Traders" ? latest.large_traders : settings.participant === "Small Traders" ? latest.small_traders : latest.commercial_hedgers) : 0;
+  const selectedPosition = latest ? asModel(latest, modelKey) ?? 0 : 0;
   const showSignalMark = Boolean(latest && ((settings.showSignals && (latest.buy || latest.sell)) || latest.largeMove));
   const signalMarkText = latest?.buy ? "BUY" : latest?.sell ? "SELL" : latest?.largeMove ? (latest.moveDirection === "Net positioning increased" ? "POSITION +" : "POSITION −") : "";
   const signalMarkColor = latest?.buy ? C.large : latest?.sell ? C.red : C.small;
@@ -323,20 +340,23 @@ function Dashboard() {
         </div>
         <div className="section overview-grid">
           <div className="card">
-            <div className="card-head"><div><h2 className="panel-title">Weekly net positioning</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · Long − Short</div></div><div className="toolbar"><select className="select print-hidden" style={{ width: 115, minHeight: 32, padding: "5px 8px", fontSize: 11 }} value={chartWeeks} onChange={e => setChartWeeks(Number(e.target.value))} aria-label="Chart history range" data-testid="select-chart-range"><option value={13}>13 weeks</option><option value={26}>26 weeks</option><option value={52}>52 weeks</option><option value={0}>All rows</option></select>{exportButton("weekly-positioning", exportRows(visible))}</div></div>
+            <div className="card-head"><div><h2 className="panel-title">Weekly net positioning</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · {oiNorm ? "net as % of open interest" : "net contracts, long − short"}</div></div><div className="toolbar"><select className="select print-hidden" style={{ width: 115, minHeight: 32, padding: "5px 8px", fontSize: 11 }} value={chartWeeks} onChange={e => setChartWeeks(Number(e.target.value))} aria-label="Chart history range" data-testid="select-chart-range"><option value={13}>13 weeks</option><option value={26}>26 weeks</option><option value={52}>52 weeks</option><option value={0}>All rows</option></select>{exportButton("weekly-positioning", exportRows(visible))}</div></div>
             <div className="card-body">
               <div className="control-group" style={{ marginBottom: 8 }}>
                 {([["showLT", "Large", C.large], ["showST", "Small", C.small], ["showCH", "Commercial", C.commercial]] as const).map(([key, label, color]) => <button key={key} className={`seg ${settings[key] ? "active" : ""}`} style={settings[key] ? { background: color, borderColor: color, color: "#fff" } : {}} onClick={() => setSetting(key, !settings[key])}>{label}</button>)}
               </div>
               <div className="chart-box">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={visible} margin={{ top: 10, right: 10, bottom: 0, left: 5 }}>
+                  <LineChart data={chartRows} margin={{ top: 10, right: 10, bottom: 0, left: 5 }}>
                     <CartesianGrid stroke={C.grid} strokeDasharray="3 5" vertical={false} />
                     <XAxis dataKey="date" tick={chartTick} tickFormatter={d => String(d).slice(2, 7)} minTickGap={35} axisLine={false} tickLine={false} />
-                    <YAxis tick={chartTick} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} width={43} />
-                    <Tooltip content={<TooltipBox />} isAnimationActive={false} cursor={{ stroke: "hsl(var(--muted-foreground))", strokeDasharray: "3 3" }} />
+                    <YAxis tick={chartTick} tickFormatter={v => oiNorm ? `${Math.round(v)}%` : `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} width={43} />
+                    <Tooltip content={<TooltipBox unit={oiNorm ? "%" : ""} />} isAnimationActive={false} cursor={{ stroke: "hsl(var(--muted-foreground))", strokeDasharray: "3 3" }} />
                     <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                     <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeOpacity={.5} />
+                    {zBand && bandStart && <ReferenceArea x1={bandStart} x2={zBand.end} fill="hsl(var(--primary))" fillOpacity={0.05} ifOverflow="hidden" />}
+                    {zBand && bandStart && <ReferenceLine segment={[{ x: bandStart, y: zBand.upper }, { x: zBand.end, y: zBand.upper }]} stroke={modelKey === "large_traders" ? C.large : modelKey === "small_traders" ? C.small : C.commercial} strokeDasharray="4 4" strokeOpacity={0.9} ifOverflow="extendDomain" label={{ value: `+${settings.zThreshold}σ`, position: "insideTopLeft", fill: "hsl(var(--muted-foreground))", fontSize: 10, fontFamily: "DM Mono" }} />}
+                    {zBand && bandStart && <ReferenceLine segment={[{ x: bandStart, y: zBand.lower }, { x: zBand.end, y: zBand.lower }]} stroke={modelKey === "large_traders" ? C.large : modelKey === "small_traders" ? C.small : C.commercial} strokeDasharray="4 4" strokeOpacity={0.9} ifOverflow="extendDomain" label={{ value: `−${settings.zThreshold}σ`, position: "insideBottomLeft", fill: "hsl(var(--muted-foreground))", fontSize: 10, fontFamily: "DM Mono" }} />}
                     {showSignalMark && latest && settings.highlight !== "Shapes Only" && <ReferenceArea x1={latest.date} x2={latest.date} fill={signalMarkColor} fillOpacity={0.14} />}
                     {settings.showLT && <Line type="monotone" dataKey="large_traders" name="Large traders" stroke={C.large} strokeWidth={2} dot={false} isAnimationActive={false} />}
                     {settings.showST && <Line type="monotone" dataKey="small_traders" name="Small traders" stroke={C.small} strokeWidth={2} dot={false} isAnimationActive={false} />}
@@ -344,7 +364,7 @@ function Dashboard() {
                     {showSignalMark && latest && settings.highlight !== "Background Only" && <ReferenceDot x={latest.date} y={selectedPosition} r={6} fill={signalMarkColor} stroke="hsl(var(--card))" strokeWidth={2} ifOverflow="visible" label={{ value: signalMarkText, position: "top", fill: signalMarkColor, fontSize: 10, fontFamily: "DM Mono" }} />}
                   </LineChart>
               </ResponsiveContainer>
-              </div>{settings.showPaneLabel && <div className="eyebrow" style={{ marginTop: 8 }}>{dataMarketLabel} · {reportName} · Long − Short</div>}<div className="chart-foot">Most recent {visible.length} of {computed.length} weekly rows · {dataMarketLabel} · {reportName} · same observations as analysis table · highlight: {settings.highlight}</div>
+              </div>{settings.showPaneLabel && <div className="eyebrow" style={{ marginTop: 8 }}>{dataMarketLabel} · {reportName} · {oiNorm ? "net as % of open interest" : "Long − Short"}</div>}<div className="chart-foot">{zBand ? <>Shaded: the {settings.lookback}-week window the Z-score uses · dashed: ±{settings.zThreshold}σ for {settings.participant.toLowerCase()}, so a line beyond it is a Z extreme. </> : null}Most recent {visible.length} of {computed.length} weekly rows · {reportName}.</div>
             </div>
           </div>
           <div className="card">
