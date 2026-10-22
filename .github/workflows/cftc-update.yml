@@ -38,3 +38,12 @@ jobs:
           CFTC_APP_TOKEN: ${{ secrets.CFTC_APP_TOKEN }}
           CFTC_JOB_OWNER: ${{ inputs.owner }}
           CFTC_FORCE_REFRESH: ${{ inputs.full_refresh }}
+      - name: Refresh The Invisible Hand numbers
+        # Runs only after the step above succeeds; its own failure never marks the data update failed.
+        continue-on-error: true
+        run: pnpm --filter @workspace/api-server exec tsx cloudflare/hand-cli.ts
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
+          CFTC_APP_TOKEN: ${{ secrets.CFTC_APP_TOKEN }}
+          SECTORS_PRICE_SOURCE: ${{ vars.SECTORS_PRICE_SOURCE || 'yahoo' }}

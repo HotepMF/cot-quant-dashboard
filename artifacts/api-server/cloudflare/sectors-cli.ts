@@ -8,14 +8,14 @@ import { SECTORS_JOB } from "./sectors-launcher";
 import { cftcPositioning, priceSource, treasuryYields, type DailyCloses, type PositioningHistory } from "./sectors-sources";
 
 /** Store the snapshot as the current document and in the dated history, atomically, and mark the job done. */
-export async function saveSnapshot(db: Sql, key: string, asOf: string, payload: string) {
+export async function saveSnapshot(db: Sql, key: string, asOf: string, payload: string, job = SECTORS_JOB) {
   await db.batch([
     statement(db, `INSERT INTO cot_cf_documents(key,as_of,payload,updated_at) VALUES(?,?,?,${NOW})
       ON CONFLICT(key) DO UPDATE SET as_of=excluded.as_of,payload=excluded.payload,updated_at=excluded.updated_at`, key, asOf, payload),
     statement(db, `INSERT INTO cot_cf_document_history(key,as_of,payload) VALUES(?,?,?)
       ON CONFLICT(key,as_of) DO UPDATE SET payload=excluded.payload`, key, asOf, payload),
     statement(db, `INSERT INTO cot_cf_jobs(id,last_success_at,last_error) VALUES(?,${NOW},NULL)
-      ON CONFLICT(id) DO UPDATE SET last_success_at=excluded.last_success_at,last_error=NULL`, SECTORS_JOB),
+      ON CONFLICT(id) DO UPDATE SET last_success_at=excluded.last_success_at,last_error=NULL`, job),
   ]);
 }
 

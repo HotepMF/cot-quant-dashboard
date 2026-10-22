@@ -1,10 +1,11 @@
 import { useEffect, useMemo } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, AlertTriangle, Moon, Sun } from "lucide-react";
+import { AlertTriangle, Moon, Sun } from "lucide-react";
 import { POSITIONING_GROUPS, SECTOR_LINKS } from "@workspace/cot-engine";
 import type { PositioningRow, SectorRow, SectorsSnapshot } from "@workspace/cot-engine";
-import { useTheme, workspaceLinks } from "@/components/scanner/scanner-shell";
+import { useTheme } from "@/components/scanner/scanner-shell";
+import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
 import "./sectors.css";
 
 const signed = (v: number | null, d = 1, unit = "") => v == null ? "—" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(d)}${unit}`;
@@ -125,7 +126,6 @@ const tests: [string, string, string][] = [
 ];
 
 export function SectorsPage() {
-  const [location] = useLocation();
   const [isDark, setIsDark] = useTheme();
   useEffect(() => { window.scrollTo(0, 0); document.title = "Sectors · COT Quant"; }, []);
   const query = useQuery({
@@ -156,14 +156,8 @@ export function SectorsPage() {
 
   return <div className="shell">
     <aside className="sidebar">
-      <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 8px 30px" }}>
-        <div className="brand-mark"><Activity size={18} /></div>
-        <div><div style={{ fontFamily: "var(--app-font-serif)", fontWeight: 800, fontSize: 14, letterSpacing: "-.04em" }}>COT / QUANT</div><div style={{ font: "9px var(--app-font-mono)", color: "rgba(244,241,232,.5)", marginTop: 3 }}>RESEARCH TERMINAL</div></div>
-      </div>
-      <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)", padding: "0 12px 8px" }}>Workspace</div>
-      <nav style={{ display: "grid", gap: 3 }}>
-        {workspaceLinks.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${location === href ? "active" : ""}`}><Icon size={16} />{label}</Link>)}
-      </nav>
+      <SiteBrand />
+      <SiteNav />
     </aside>
     <main className="main sx-main">
       <header className="topline">
@@ -201,8 +195,6 @@ export function SectorsPage() {
         </footer>
       </>}
     </main>
-    <nav className="mobile-nav print-hidden">
-      {workspaceLinks.map(({ href, short, label, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${location === href ? "active" : ""}`} aria-label={label}><Icon size={16} /><span>{short}</span></Link>)}
-    </nav>
+    <SiteMobileNav />
   </div>;
 }
