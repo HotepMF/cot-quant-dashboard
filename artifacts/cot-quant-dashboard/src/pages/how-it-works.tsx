@@ -41,7 +41,7 @@ export function HowItWorksPage() {
       </header>
 
       <nav className="hiw-toc print-hidden" aria-label="On this page">
-        {[["cot", "The COT report"], ["reading", "Reading the site"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
+        {[["cot", "The COT report"], ["reading", "Reading the site"], ["model", "The default model"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["invisible-hand", "The Invisible Hand"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
           <a key={id} href={`#${id}`} className="ms-chip" onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</a>)}
       </nav>
 
