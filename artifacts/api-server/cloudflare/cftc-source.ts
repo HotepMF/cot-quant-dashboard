@@ -26,20 +26,23 @@ export async function officialMarkets(report: ReportKey, token?: string) {
   const rows = await query<{ market_and_exchange_names: string; cftc_contract_market_code: string }>(report,
     `SELECT market_and_exchange_names, cftc_contract_market_code WHERE report_date_as_yyyy_mm_dd = ${quote(`${reportAsOf}T00:00:00.000`)} ORDER BY market_and_exchange_names ASC LIMIT 2000`, token);
   const markets = rows.map(row => ({ name: row.market_and_exchange_names, code: row.cftc_contract_market_code }));
-  if (!markets.length || markets.some(m => !m.name || !m.code) || new Set(markets.map(m => m.name)).size !== markets.length) {
+  if (!markets.length || markets.some(m => !m.name || !m.code) || new Set(markets.map(m => m.name)).size !== markets.length
+    || new Set(markets.map(m => m.code)).size !== markets.length) {
     throw new Error("The official market list is empty, invalid, or ambiguous.");
   }
   return { reportAsOf, markets };
 }
 export async function officialHistories(report: ReportKey, reportAsOf: string, markets: Market[], token?: string): Promise<Map<string, History>> {
-  const histories = new Map(markets.map(m => [m.name, new Map<string, RawRow>()]));
-  const names = markets.map(m => quote(m.name)).join(", ");
-  const projection = "market_and_exchange_names, report_date_as_yyyy_mm_dd, noncomm_positions_long_all - noncomm_positions_short_all AS large_traders, comm_positions_long_all - comm_positions_short_all AS commercial_hedgers, nonrept_positions_long_all - nonrept_positions_short_all AS small_traders, open_interest_all AS open_interest";
+  // Select by contract code, not name: the CFTC renames contracts (e.g. Feb 2022), and a name filter
+  // silently drops every observation published under an earlier name. Results stay keyed by today's name.
+  const histories = new Map(markets.map(m => [m.code, new Map<string, RawRow>()]));
+  const codes = markets.map(m => quote(m.code)).join(", ");
+  const projection = "cftc_contract_market_code, report_date_as_yyyy_mm_dd, noncomm_positions_long_all - noncomm_positions_short_all AS large_traders, comm_positions_long_all - comm_positions_short_all AS commercial_hedgers, nonrept_positions_long_all - nonrept_positions_short_all AS small_traders, open_interest_all AS open_interest";
   for (let page = 0; page < 100; page++) {
     const rows = await query<Record<string, string>>(report,
-      `SELECT ${projection} WHERE market_and_exchange_names IN (${names}) AND report_date_as_yyyy_mm_dd <= ${quote(`${reportAsOf}T00:00:00.000`)} ORDER BY market_and_exchange_names ASC, report_date_as_yyyy_mm_dd ASC LIMIT 5000 OFFSET ${page * 5000}`, token);
+      `SELECT ${projection} WHERE cftc_contract_market_code IN (${codes}) AND report_date_as_yyyy_mm_dd <= ${quote(`${reportAsOf}T00:00:00.000`)} ORDER BY cftc_contract_market_code ASC, report_date_as_yyyy_mm_dd ASC LIMIT 5000 OFFSET ${page * 5000}`, token);
     for (const row of rows) {
-      const history = histories.get(row.market_and_exchange_names);
+      const history = histories.get(row.cftc_contract_market_code);
       if (!history) throw new Error("CFTC returned a market outside the requested batch.");
       const n = [row.large_traders, row.small_traders, row.commercial_hedgers].map(numeric);
       if (!row.report_date_as_yyyy_mm_dd || !Number.isFinite(Date.parse(row.report_date_as_yyyy_mm_dd)) || !n.every(Number.isFinite)) throw new Error("Invalid official positioning observation.");
@@ -54,7 +57,7 @@ export async function officialHistories(report: ReportKey, reportAsOf: string, m
     if (page === 99) throw new Error("CFTC pagination limit reached; refusing an incomplete history.");
   }
   return new Map(markets.map(m => {
-    const rows = [...histories.get(m.name)!.values()].sort((a, b) => a.date.localeCompare(b.date));
+    const rows = [...histories.get(m.code)!.values()].sort((a, b) => a.date.localeCompare(b.date));
     if (!rows.length || rows.at(-1)!.date !== reportAsOf) throw new Error("Official batch is missing a current-report observation.");
     return [m.name, { rows, error: null }];
   }));
