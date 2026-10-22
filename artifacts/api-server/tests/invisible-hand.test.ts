@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { HAND_PARTICIPATION, HAND_POWER_PRODUCERS } from "@workspace/cot-engine";
-import { buildHand, changeZ, hysteresis, participationRow } from "../cloudflare/hand-compute";
+import { HAND_PARTICIPATION, HAND_POWER_PRODUCERS, eventTags, marketEvents } from "@workspace/cot-engine";
+import { buildHand, changeZ, crowdedRows, hysteresis, participationRow, rangeRows } from "../cloudflare/hand-compute";
 import { HAND_JOB } from "../cloudflare/hand-cli";
-import type { CategoryHistory, CurvePoint, LatestCounts } from "../cloudflare/hand-sources";
+import type { CategoryHistory, CurvePoint, DailyBars, LatestCounts, SiteHistory } from "../cloudflare/hand-sources";
 import { saveSnapshot } from "../cloudflare/sectors-cli";
 import { handleApi } from "../cloudflare/api";
 import { RestD1 } from "../cloudflare/rest-d1";
@@ -89,6 +89,39 @@ test("A snapshot has all five cards, every participation row, and marks unconnec
   assert.equal(s.positioningAsOf, s.participation[0].reportDate);
   assert.ok(JSON.stringify(s).length < 60_000);
   assert.equal(buildHand(inputs(null)).cards.find(c => c.id === "rates")!.status, "pending", "no yields: rates pending, page still built");
+});
+
+test("Calendar: official dates plus expirations from exchange rules, holiday shifts included", () => {
+  const ev = marketEvents("2026-06-01", "2026-12-31");
+  const on = (kind: string, d: string) => ev.some(e => e.kind === kind && e.date === d);
+  assert.ok(on("witching", "2026-06-18"), "Juneteenth fell on the third Friday, so June witching moved to Thursday");
+  assert.ok(on("roll", "2026-12-10") && on("witching", "2026-12-18"));
+  assert.ok(on("last-trade", "2026-10-20"), "WTI Nov: the 25th is a Sunday, so 4 business days before");
+  assert.ok(on("last-trade", "2026-11-20"), "WTI Dec: 3 business days before Wed Nov 25");
+  assert.ok(on("last-trade", "2026-11-25"), "Natural gas Dec: 3 business days before Dec 1, skipping Thanksgiving");
+  assert.ok(on("fomc", "2026-10-28") && on("cpi", "2026-11-10") && on("payrolls", "2026-11-06"));
+  assert.ok(ev.every((e, i) => i === 0 || ev[i - 1].date <= e.date), "sorted by date");
+});
+
+test("Event tags: next 7 days, and the week the latest report covers", () => {
+  const es = eventTags("13874+", "2026-10-13", "2026-10-22");
+  assert.deepEqual(es.upcoming.map(e => e.kind), ["fomc"]);
+  assert.deepEqual(es.inData.map(e => e.kind), []);
+  const after = eventTags("13874+", "2026-10-20", "2026-10-22");
+  assert.deepEqual(after.inData.map(e => `${e.kind} ${e.date}`), ["cpi 2026-10-14", "opex 2026-10-16"], "CPI and opex fell inside the Oct 14-20 report week");
+  assert.deepEqual(eventTags("067651", "2026-10-13", "2026-10-22").upcoming, [], "crude is not tagged with macro releases");
+  assert.equal(eventTags("023651", "2026-10-13", "2026-10-22").upcoming[0].short, "NG expiry");
+});
+
+test("Expected ranges convert the tested median and wide day into points; crowded watch finds 3-year extremes", () => {
+  const bars: DailyBars = { dates: [], high: [], low: [], close: [] };
+  for (let i = 0; i < 30; i++) { bars.dates.push(`2026-09-${String(i + 1).padStart(2, "0")}`); bars.close.push(1000); bars.high.push(1005); bars.low.push(995); }
+  const [es] = rangeRows("normal", new Map([["ES", bars]]));
+  assert.deepEqual([es.medianPct, es.medianPts, es.p80Pts, es.recent20Pct], [1.18, 12, 19, 1]);
+  assert.equal(rangeRows("high", new Map([["ES", bars]]))[0].medianPct, 1.98);
+  const weekly = (f: (i: number) => number): SiteHistory => Array.from({ length: 170 }, (_, i) => ({ date: new Date(Date.UTC(2023, 7, 1) + i * 7 * 86_400_000).toISOString().slice(0, 10), largeTraders: f(i), commercialHedgers: -f(i), openInterest: 1000 }));
+  const rows = crowdedRows(new Map([["088691", weekly(i => i)], ["067651", weekly(i => Math.sin(i / 3) * 50)]]));
+  assert.deepEqual(rows.map(r => [r.symbol, r.side, r.specPct3y, r.commPct3y]), [["GC", "top", 100, 0]], "gold at a 3-year high; mid-range crude is left out");
 });
 
 test("Actual D1: the snapshot is stored once per CFTC week and served by /api/invisible-hand", async t => {

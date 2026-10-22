@@ -2,8 +2,9 @@ import { useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Info, Moon, Sun } from "lucide-react";
-import { HAND_FOOTER } from "@workspace/cot-engine";
-import type { HandCard, HandSnapshot, ParticipationRow } from "@workspace/cot-engine";
+import { HAND_FOOTER, curatedMarketByCode, marketEvents } from "@workspace/cot-engine";
+import type { CrowdedRow, HandCard, HandSnapshot, MarketEvent, ParticipationRow, RangeRow } from "@workspace/cot-engine";
+import { EventTags, eventDay, newYorkToday } from "@/components/event-tags";
 import { useTheme } from "@/components/scanner/scanner-shell";
 import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
 import "./sectors.css";
@@ -20,7 +21,7 @@ function Participation({ rows }: { rows: ParticipationRow[] }) {
   return <div className="sx-scroll"><table className="sx-table ih-part">
     <thead><tr><th>Market</th><th>Category</th><th className="num">Net % OI</th><th className="num">Long / short</th><th className="num">3-yr pct</th><th className="num">4 wk pp</th><th className="num hide-sm">Traders L / S</th></tr></thead>
     <tbody>{rows.map(p => <tr key={`${p.code}-${p.category}`} data-testid={`row-participation-${p.code}-${p.category.replace(/\W+/g, "-")}`}>
-      <td className="sx-nm">{p.market}</td><td>{p.category}</td>
+      <td className="sx-nm">{p.market}<EventTags code={p.code} reportDate={p.reportDate} /></td><td>{p.category}</td>
       {p.withheld
         ? <td className="num ih-withheld" colSpan={4}>withheld · thin market</td>
         : <>
@@ -32,6 +33,53 @@ function Participation({ rows }: { rows: ParticipationRow[] }) {
       <td className="num hide-sm">{count(p.tradersLong)} / {count(p.tradersShort)}</td>
     </tr>)}</tbody>
   </table></div>;
+}
+
+const plus = (e: MarketEvent, r: RangeRow) => e.effect?.verdict === "wider" && e.effect[r.market === "ES" ? "es" : "nq"] != null
+  ? r.medianPct * (1 + e.effect[r.market === "ES" ? "es" : "nq"]! / 100) : null;
+const touched = (e: MarketEvent) => e.codes.length > 12 ? "All financial futures" : [...new Set(e.codes.map(c => curatedMarketByCode.get(c)?.symbol).filter(Boolean))].join(" · ");
+
+/** Expected ranges, the next two weeks of scheduled events, and the crowded watch. */
+function DayTrader({ data }: { data: HandSnapshot }) {
+  const today = newYorkToday();
+  const two = new Date(Date.parse(`${today}T00:00:00Z`) + 14 * 86_400_000).toISOString().slice(0, 10);
+  const events = marketEvents(today, two);
+  const ranges = data.ranges ?? [], crowd = data.crowded ?? [];
+  const es = ranges.find(r => r.market === "ES");
+  return <>
+    <div className="sx-grid ih-dt">
+      <section className="card sx-panel" aria-label="Expected ranges" data-testid="panel-ranges">
+        <div className="sx-head"><span>EXPECTED DAILY RANGE · ES / NQ</span><b>volatility {ranges[0]?.state ?? "—"}</b></div>
+        {ranges.length ? <div className="sx-scroll"><table className="sx-table ih-ranges"><thead><tr><th>Mkt</th><th className="num">Typical day</th><th className="num">Wide day</th><th className="num">Last 20 days</th><th className="num hide-sm">Last</th></tr></thead>
+          <tbody>{ranges.map(r => <tr key={r.market} data-testid={`row-range-${r.market}`}>
+            <td className="sx-tk">{r.market}</td>
+            <td className="num">{r.medianPct.toFixed(2)}% <span className="ih-pts">{r.medianPts.toLocaleString()} pts</span></td>
+            <td className="num">{r.p80Pct.toFixed(2)}% <span className="ih-pts">{r.p80Pts.toLocaleString()} pts</span></td>
+            <td className="num">{r.recent20Pct == null ? "—" : `${r.recent20Pct.toFixed(2)}%`}</td>
+            <td className="num hide-sm">{r.last.toLocaleString()}</td>
+          </tr>)}</tbody></table></div> : <div className="sx-rd"><p className="muted">Range data is unavailable this run.</p></div>}
+        <div className="sx-rd"><p className="muted"><span className="ih-tag">Validated</span>High − low as % of the prior close, in this volatility state, 2002–2026. Typical = median day; wide = 1 day in 5 is larger. Ranges are tested; direction is not. FOMC and payrolls days have run about 20% wider.</p></div>
+      </section>
+      <section className="card sx-panel" aria-label="Next two weeks" data-testid="panel-calendar">
+        <div className="sx-head"><span>NEXT TWO WEEKS · SCHEDULED</span><b>{eventDay(today, false)} – {eventDay(two, false)}</b></div>
+        <table className="sx-table ih-cal"><tbody>{events.length ? events.map(e => <tr key={`${e.kind}-${e.date}-${e.label}`} data-testid={`row-event-${e.kind}-${e.date}`}>
+          <td className="ih-cd">{eventDay(e.date)}</td>
+          <td><b className={e.effect?.verdict === "wider" ? "ih-wide" : ""}>{e.label}</b>{e.time && <span className="ih-pts"> {e.time}</span>}
+            <span className="ih-sub">{touched(e)}{e.effect && <> · {e.effect.text}{es && plus(e, es) != null ? `: typical ES day ≈ ${plus(e, es)!.toFixed(2)}% (${Math.round(es.last * plus(e, es)! / 100)} pts)` : ""}</>}</span></td>
+        </tr>) : <tr><td className="muted">No scheduled events in the next two weeks.</td></tr>}</tbody></table>
+        <div className="sx-cap">Sources: Federal Reserve and BLS release schedules; expirations from exchange rules. CFTC positioning is released Fridays at 3:30 pm ET.</div>
+      </section>
+    </div>
+    <section className="card sx-panel" aria-label="Crowded watch" data-testid="panel-crowded">
+      <div className="sx-head"><span>CROWDED WATCH · CORE MARKETS AT A 3-YEAR EXTREME</span><b>CFTC {crowd[0] ? day(crowd[0].reportDate) : "—"}</b></div>
+      {crowd.length ? <div className="sx-scroll"><table className="sx-table ih-crowdtab"><thead><tr><th>Mkt</th><th>Market</th><th className="num">Large specs net % OI</th><th className="num">Specs 3-yr pct</th><th className="num">Commercials pct</th><th className="num">4 wk pp</th></tr></thead>
+        <tbody>{crowd.map((c: CrowdedRow) => <tr key={c.code} data-testid={`row-crowded-${c.code}`}>
+          <td className="sx-tk">{c.symbol}</td><td className="sx-nm">{c.label}<EventTags code={c.code} reportDate={c.reportDate} today={today} /></td>
+          <td className="num">{signed(c.specNetPct)}</td><td className="num ih-crowd">{ordinal(c.specPct3y)}</td><td className="num">{ordinal(c.commPct3y)}</td><td className="num">{signed(c.chg4w)}</td>
+        </tr>)}</tbody></table></div> : <div className="sx-rd"><p className="muted">No core market is at a 3-year extreme this week.</p></div>}
+      <div className="sx-rd"><p className="muted"><span className="ih-tag">Validated</span>Crowded readings were not followed by bigger moves in our tests, so this is where risk sits, not a timing signal. Tags: solid = scheduled in the next 7 days; outlined = happened inside the week this report covers.</p></div>
+    </section>
+  </>;
 }
 
 function Card({ card, rows }: { card: HandCard; rows: ParticipationRow[] }) {
@@ -107,6 +155,7 @@ export function InvisibleHandPage() {
           <div className="sx-head"><span>OUR READ</span><b className="ih-pending">coming soon</b></div>
           <div className="sx-rd"><p className="muted">A short weekly read is on its way: what the numbers below add up to, how we lean, and what would change our mind. Every statement will be labeled <b>Validated</b> (backed by our tested data) or <b>Speculation</b> (with the reasoning shown). For now this page shows the numbers only.</p></div>
         </section>
+        <DayTrader data={data} />
         <div className="ih-cards">{data.cards.map(c => <Card key={c.id} card={c} rows={data.participation.filter(p => p.card === c.id)} />)}</div>
         <footer className="sx-foot">
           {HAND_FOOTER} Positioning: CFTC Commitments of Traders, futures only (Traders in Financial Futures, Disaggregated, Legacy); net and gross positions as % of open interest; 3-yr pct = share of the last 156 weekly readings below today's; rows are withheld when fewer than 20 traders hold the category or the top 4 traders hold more than 50% of either side. Volatility: SPY 21-day realised volatility against its 3-year history (enter ±1σ, exit inside ±0.5σ), VIX ÷ VIX3M. Rates: U.S. Treasury daily par yield curve; curve label from the 13-week change in 2s10s against its 3-year history. Prices: {data.priceSource}, end of day. Past patterns come from our 1999–2026 tests and describe what happened alongside each state, not what follows it. <Link href="/how-it-works">How it works</Link>. Not investment advice.

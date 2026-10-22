@@ -57,11 +57,39 @@ export type HandCard = {
   readings: Reading[];
 };
 
+/**
+ * Daily range (high − low as % of the previous close) by volatility state, ES and NQ, 2002-07 to 2026-10 (6,042 days;
+ * quarterly expiry days excluded because the continuous futures bar covers only the overnight session that day).
+ * Source: backtest/regime/daytrader_tests.py. Validated: next-week ranges differ by state (trading_regimes.py).
+ */
+export const HAND_RANGES = {
+  ES: { high: { median: 1.98, p80: 3.21 }, normal: { median: 1.18, p80: 1.89 }, low: { median: 0.92, p80: 1.43 } },
+  NQ: { high: { median: 2.35, p80: 3.75 }, normal: { median: 1.55, p80: 2.44 }, low: { median: 1.30, p80: 1.97 } },
+} as const;
+export const HAND_RANGE_TICKERS = { ES: "ES=F", NQ: "NQ=F" } as const;
+
+export type RangeRow = {
+  market: "ES" | "NQ"; state: "high" | "normal" | "low";
+  /** Typical (median) and wide (80th percentile) day for this state, % and points at the last close. */
+  medianPct: number; p80Pct: number; last: number; medianPts: number; p80Pts: number;
+  /** Median daily range over the last 20 sessions, %: what the market has actually been doing. */
+  recent20Pct: number | null; asOf: string;
+};
+
+/** Core market whose large speculators sit at the edge of their 3-year range (Legacy report, the site's own data). */
+export type CrowdedRow = {
+  code: string; symbol: string; label: string; group: string; reportDate: string;
+  specNetPct: number; specPct3y: number; commPct3y: number; chg4w: number | null; side: "top" | "bottom";
+};
+
 export type HandSnapshot = {
   version: 1; generatedAt: string; priceSource: string;
   positioningAsOf: string; pricesAsOf: string; yieldsAsOf: string | null;
   cards: HandCard[];
   participation: ParticipationRow[];
+  /** Day-trader backdrop (added in v1.1; absent on older stored snapshots). */
+  ranges?: RangeRow[];
+  crowded?: CrowdedRow[];
 };
 
 export const HAND_FOOTER = "Describes current conditions and what happened alongside them historically. Not a forecast or a trading signal.";

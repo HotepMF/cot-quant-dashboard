@@ -69,3 +69,42 @@ export async function cftcParticipation(report: HandReport, code: string, catego
   }
   return { histories, counts };
 }
+
+export type DailyBars = { dates: string[]; high: number[]; low: number[]; close: number[] };
+
+/** Recent daily bars from the Yahoo chart endpoint (same accepted-risk source as the sectors job). */
+export async function yahooBars(ticker: string, range = "3mo"): Promise<DailyBars> {
+  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`);
+  url.searchParams.set("range", range);
+  url.searchParams.set("interval", "1d");
+  const response = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (cot-quant invisible hand job)", Accept: "application/json" }, signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) throw new Error(`Price source returned HTTP ${response.status} for ${ticker}.`);
+  const body = await response.json() as { chart?: { result?: { timestamp?: number[]; indicators?: { quote?: { high?: (number | null)[]; low?: (number | null)[]; close?: (number | null)[] }[] } }[] } };
+  const r = body.chart?.result?.[0], q = r?.indicators?.quote?.[0];
+  if (!r?.timestamp?.length || !q?.high || !q.low || !q.close) throw new Error(`Price source returned no bars for ${ticker}.`);
+  const out: DailyBars = { dates: [], high: [], low: [], close: [] };
+  r.timestamp.forEach((t, i) => {
+    const h = q.high![i], l = q.low![i], c = q.close![i];
+    if (h != null && l != null && c != null && h >= l && l > 0) {
+      out.dates.push(new Date(t * 1000).toISOString().slice(0, 10)); out.high.push(h); out.low.push(l); out.close.push(c);
+    }
+  });
+  return out;
+}
+
+export type SiteHistory = { date: string; largeTraders: number; commercialHedgers: number; openInterest: number | null }[];
+
+/** Weekly Legacy histories exactly as the site serves them (stitched, consolidated lines included). */
+export async function siteHistories(names: Map<string, string>, origin = process.env.HAND_SITE_ORIGIN ?? "https://zcot.trade") {
+  const markets = await (await fetch(`${origin}/api/cot/markets?report=futures`, { signal: AbortSignal.timeout(30_000) })).json() as { markets: { name: string; code: string }[] };
+  const out = new Map<string, SiteHistory>();
+  for (const m of markets.markets) {
+    if (!names.has(m.code)) continue;
+    const url = `${origin}/api/cot/market?report=futures&market=${encodeURIComponent(m.name)}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    if (!response.ok) continue;
+    const body = await response.json() as { rows: SiteHistory };
+    out.set(m.code, body.rows);
+  }
+  return out;
+}
