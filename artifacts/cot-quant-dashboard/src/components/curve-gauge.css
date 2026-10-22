@@ -1,0 +1,32 @@
+/* Futures curve gauge: contango (cool) on the left, backwardation (warm) on the right, the usual range muted. */
+.cg-card { --cg-contango: 209 52% 50%; --cg-back: 28 78% 50%; }
+.cg-body { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: start; }
+.cg-left { display: grid; justify-items: center; }
+.cg-dial { display: block; max-width: 100%; height: auto; }
+.cg-arc { fill: none; stroke-width: 12; }
+.cg-normal { stroke: hsl(var(--muted)); }
+.cg-contango { stroke: hsl(var(--cg-contango)); }
+.cg-back { stroke: hsl(var(--cg-back)); }
+.cg-tick { stroke: hsl(var(--card)); stroke-width: 2; }
+.cg-needle { stroke: hsl(var(--foreground)); stroke-width: 3; stroke-linecap: round; }
+.cg-hub { fill: hsl(var(--foreground)); }
+.cg-ends { display: flex; justify-content: space-between; width: 190px; font: 9px var(--app-font-mono); text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+.cg-state { font: 700 17px var(--app-font-serif, inherit); margin-top: 8px; }
+.cg-zone { font-size: 11px; margin-top: 2px; text-align: center; }
+.cg-deep-backwardation { color: hsl(var(--cg-back)); font-weight: 600; }
+.cg-deep-contango { color: hsl(var(--cg-contango)); font-weight: 600; }
+.cg-stats { display: grid; gap: 11px; min-width: 0; }
+.cg-stats .statline b { text-align: right; overflow-wrap: anywhere; }
+.cg-label { font: 9px var(--app-font-mono); text-transform: uppercase; letter-spacing: .06em; padding: 3px 7px; border: 1px solid hsl(var(--border)); border-radius: 999px; color: hsl(var(--muted-foreground)); white-space: nowrap; }
+.cg-hist { margin-top: 2px; }
+.cg-hist-head { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; font-family: var(--app-font-mono); }
+.cg-spark { display: block; width: 100%; height: 46px; margin-top: 4px; }
+.cg-zero { stroke: hsl(var(--muted-foreground)); stroke-opacity: .45; stroke-dasharray: 3 4; }
+.cg-line { fill: none; stroke-width: 1.8; vector-effect: non-scaling-stroke; }
+.cg-up { stroke: hsl(var(--cg-back)); }
+.cg-down { stroke: hsl(var(--cg-contango)); }
+.cg-note { margin-top: 4px; font-size: 12px; }
+.cg-card .sx-table .cg-dial { margin: -4px 0; }
+@media (max-width: 720px) {
+  .cg-body { grid-template-columns: 1fr; }
+}

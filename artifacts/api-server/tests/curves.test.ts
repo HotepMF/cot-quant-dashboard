@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CURVE_MARKETS, DEMO_MARKETS, curveCandidates, curveCarry } from "@workspace/cot-engine";
+import { CURVE_MARKETS, DEMO_MARKETS, curveCandidates, curveCarry, curveGauge, curveZone, realisedVol } from "@workspace/cot-engine";
 
 const market = (symbol: string) => CURVE_MARKETS.find(m => m.symbol === symbol)!;
 
@@ -22,4 +22,23 @@ test("Every demo-account market has a curve entry", () => {
   const curve = new Set(CURVE_MARKETS.map(m => m.symbol));
   const missing = DEMO_MARKETS.filter(m => !curve.has(m.symbol)).map(m => m.symbol);
   assert.deepEqual(missing, []);
+});
+
+test("Gauge and zones place carry within the market's own history", () => {
+  // Crude cutoffs: 5th -0.17, 20th -0.073, 80th 0.096, 95th 0.168.
+  assert.equal(curveZone("CL", 0.2), "deep-backwardation");
+  assert.equal(curveZone("CL", 0), "normal");
+  assert.equal(curveZone("CL", -0.1), "deep-contango");
+  assert.equal(curveZone("LBR", 0.1), null, "no history, no zone");
+  assert.ok(Math.abs(curveGauge("CL", 0.096)! - 0.8) < 1e-9);
+  assert.ok(Math.abs(curveGauge("CL", -0.073)! - 0.2) < 1e-9);
+  assert.equal(curveGauge("CL", 5), 1, "clamped");
+  // Gold is almost always in contango: a near-flat gold curve is deep backwardation for gold.
+  assert.equal(curveZone("GC", 0), "deep-backwardation");
+});
+
+test("Realised vol: annualised from daily log moves; too little data gives null", () => {
+  const v = realisedVol([100, ...Array.from({ length: 20 }, (_, i) => (i % 2 ? 100 : 101))]);
+  assert.ok(v != null && v > 0.1 && v < 0.2, `alternating 1% moves ≈ 16% a year, got ${v}`);
+  assert.equal(realisedVol([100, 101, 100, 101, 100]), null);
 });
