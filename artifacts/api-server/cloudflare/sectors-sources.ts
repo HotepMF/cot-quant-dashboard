@@ -12,11 +12,12 @@ export interface PriceSource {
 const isoDay = (seconds: number) => new Date(seconds * 1000).toISOString().slice(0, 10);
 
 /**
- * Yahoo Finance chart endpoint. Unofficial and not licensed for public redistribution:
- * for testing while the page is unlisted. Replace with a licensed source before listing the page.
+ * Yahoo Finance chart endpoint (unofficial, no key). Yahoo's terms don't license redistribution; the site
+ * shows derived end-of-day statistics from it as an accepted risk. Swap in a licensed provider before
+ * donations, ads or paid features.
  */
 export const yahooPrices: PriceSource = {
-  name: "Yahoo Finance (testing only)",
+  name: "Yahoo Finance",
   async daily(ticker, adjusted) {
     const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`);
     url.searchParams.set("range", "6y");

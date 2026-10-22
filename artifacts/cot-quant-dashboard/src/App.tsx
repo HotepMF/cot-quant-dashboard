@@ -19,7 +19,7 @@ import { SectorsPage } from "@/pages/sectors";
 import NotFound from "@/pages/not-found";
 import {
   Activity, BarChart3, CircleHelp, Download, FileUp, Moon, Printer, RefreshCw,
-  Settings2, Sun, Upload, Waves, Database, AlertTriangle, Clock3, LayoutGrid, ListOrdered,
+  Settings2, Sun, Upload, Waves, Database, AlertTriangle, Clock3, Layers, LayoutGrid, ListOrdered,
 } from "lucide-react";
 import {
   getGetCotMarketHistoryQueryKey, getGetCotMarketsQueryKey,
@@ -376,6 +376,7 @@ function Dashboard() {
       <nav style={{ display: "grid", gap: 3 }}>
         <Link href="/sector-signals" className="nav-link" data-testid="nav-sector-signals"><LayoutGrid size={16} />Sector signals</Link>
         <Link href="/signal-watchlist" className="nav-link" data-testid="nav-signal-watchlist"><ListOrdered size={16} />Signal watchlist</Link>
+        <Link href="/sectors" className="nav-link" data-testid="nav-sectors"><Layers size={16} />SPDR sectors</Link>
         <Link href="/how-it-works" className="nav-link" data-testid="nav-how-it-works"><CircleHelp size={16} />How it works</Link>
       </nav>
       <div style={{ marginTop: "auto", borderTop: "1px solid hsl(var(--sidebar-border))", padding: "18px 8px 0" }}>
@@ -640,6 +641,7 @@ function Dashboard() {
       {sections.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-link ${activeSection === id ? "active" : ""}`} onClick={() => navigate(id)} aria-label={label} data-testid={`mobile-nav-${id}`}><Icon size={16} /><span>{label.split(" ")[0]}</span></button>)}
       <Link href="/sector-signals" className="nav-link" aria-label="Sector signals" data-testid="mobile-nav-sector-signals"><LayoutGrid size={16} /><span>Sectors</span></Link>
       <Link href="/signal-watchlist" className="nav-link" aria-label="Signal watchlist" data-testid="mobile-nav-signal-watchlist"><ListOrdered size={16} /><span>Watchlist</span></Link>
+      <Link href="/sectors" className="nav-link" aria-label="SPDR sectors" data-testid="mobile-nav-sectors"><Layers size={16} /><span>SPDR</span></Link>
       <Link href="/how-it-works" className="nav-link" aria-label="How it works" data-testid="mobile-nav-how-it-works"><CircleHelp size={16} /><span>Info</span></Link>
     </nav>
   </div>;
@@ -651,7 +653,6 @@ function App() {
     <Route path="/sector-signals" component={SectorSignalsPage} />
     <Route path="/signal-watchlist" component={SignalWatchlistPage} />
     <Route path="/how-it-works" component={HowItWorksPage} />
-    {/* Unlisted until a licensed price source is connected. */}
     <Route path="/sectors" component={SectorsPage} />
     <Route component={NotFound} />
   </Switch>;

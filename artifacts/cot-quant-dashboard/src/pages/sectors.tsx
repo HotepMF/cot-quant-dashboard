@@ -9,6 +9,23 @@ import "./sectors.css";
 
 const signed = (v: number | null, d = 1, unit = "") => v == null ? "—" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(d)}${unit}`;
 const ordinal = (p: number) => `${p}${p % 100 >= 11 && p % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[p % 10] ?? "th"}`;
+/**
+ * Closing prices missing since `asOf`: weekdays after it up to the latest close that should be in
+ * (today once the evening job has run, about 18:00 New York; otherwise the previous weekday).
+ */
+export function missedCloses(asOf: string, now = new Date()) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" })
+    .formatToParts(now).map(x => [x.type, x.value]));
+  let last = Date.parse(`${p.year}-${p.month}-${p.day}T00:00:00Z`);
+  if (Number(p.hour) < 18) last -= 86_400_000;
+  let missed = 0;
+  for (let d = Date.parse(`${asOf}T00:00:00Z`) + 86_400_000; d <= last; d += 86_400_000) {
+    const wd = new Date(d).getUTCDay();
+    if (wd !== 0 && wd !== 6) missed++;
+  }
+  return missed;
+}
+
 const day = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /** Cell tint by size of the move: primary for ahead of SPY, muted for behind. */
@@ -160,7 +177,8 @@ export function SectorsPage() {
           <button className="icon-btn" aria-label="Toggle dark mode" title="Toggle theme" onClick={() => setIsDark(v => !v)}>{isDark ? <Sun size={15} /> : <Moon size={15} />}</button>
         </div>
       </header>
-      {data && /testing/i.test(data.priceSource) && <div className="sx-banner" role="note" data-testid="banner-price-source"><AlertTriangle size={14} />Preview: prices come from {data.priceSource}. This page stays unlisted until a licensed price source is connected.</div>}
+      {/* Two or more missing closes (one may be a market holiday): say so rather than show stale numbers silently. */}
+      {data && missedCloses(data.pricesAsOf) >= 2 && <div className="sx-banner" role="alert" data-testid="banner-stale-prices"><AlertTriangle size={14} />Prices were last updated at the {day(data.pricesAsOf)} close; the price source hasn't updated since, so the price columns may be out of date. Positioning is unaffected.</div>}
       {query.isLoading && <div className="card sx-empty">Loading the sectors snapshot…</div>}
       {query.isError && <div className="card sx-empty">{query.error instanceof Error ? query.error.message : "The sectors snapshot is unavailable."}</div>}
       {data && <>
