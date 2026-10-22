@@ -72,8 +72,8 @@ export function DemoAccount() {
     </div>
     {query.isLoading && <div className="sx-rd"><p className="muted">Loading the demo account…</p></div>}
     {query.isError && <div className="sx-rd"><p className="muted">The demo account is unavailable right now.</p></div>}
-    {!query.isLoading && !query.isError && !d && <div className="sx-rd"><p className="muted">The account starts with the first weekly close after launch; its first orders appear that weekend.</p></div>}
-    {d && <>
+    {!query.isLoading && !query.isError && (!d || !d.startedWeek) && <div className="sx-rd"><p className="muted">The account starts with the first full week after launch: its first orders are placed after the next Friday close, for the week that follows, so no order can use prices from before it was published.</p></div>}
+    {d?.startedWeek && <>
       <div className="sx-strip da-strip" role="group" aria-label="Demo account summary">
         <div className="sx-st"><span>BALANCE</span><b>${Math.round(d.startBalance + pnl).toLocaleString()}</b></div>
         <div className="sx-st"><span>P&amp;L</span><b className={pnl > 0 ? "up" : ""}>{usd(pnl)}</b></div>

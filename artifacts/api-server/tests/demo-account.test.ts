@@ -61,15 +61,19 @@ test("An unfilled order lasts one week; a filter-off week places nothing", () =>
   assert.equal(r.state.order, null, "report not available: no new order");
 });
 
-test("The account starts at the latest completed week, never reprocesses a week, and records delayed reports", () => {
-  const bars = { [ES.code]: history(bar("2026-02-27", 101, 101.5, 97, 98)) };
-  const filters = { [ES.code]: { "2026-02-27": -1 as const } };
-  const a = advanceDemo(emptyDemo(), bars, filters);
+test("A new account only marks its start; orders begin at the next completed week; no week is processed twice", () => {
+  const start = { [ES.code]: history(bar("2026-02-20", 99, 101, 98, 100)) };
+  const filters = { [ES.code]: { "2026-02-20": -1 as const, "2026-02-27": -1 as const } };
+  const s = advanceDemo(emptyDemo(), start, filters);
+  assert.deepEqual([s.startedWeek, s.lastWeek, s.equity.length, Object.keys(s.markets).length], [null, "2026-02-20", 0, 0],
+    "the week after the start may already be under way, so nothing is placed yet");
+  const bars = { [ES.code]: [...start[ES.code], bar("2026-02-27", 101, 101.5, 97, 98)] };
+  const a = advanceDemo(s, bars, filters);
   assert.deepEqual([a.startedWeek, a.lastWeek, a.equity.length], ["2026-02-27", "2026-02-27", 1]);
-  assert.ok(a.markets[ES.code].order);
+  assert.ok(a.markets[ES.code].order, "first orders after the first full week, for the week that follows");
   assert.deepEqual(advanceDemo(a, bars, filters), a, "same inputs: nothing changes");
   const later = { [ES.code]: [...bars[ES.code], bar("2026-03-06", 99, 100, 98, 99.5)] };
-  const b = advanceDemo(a, later, filters);
+  const b = advanceDemo(a, later, { [ES.code]: { "2026-02-27": -1 } });
   assert.equal(b.lastWeek, "2026-03-06");
   assert.equal(b.markets[ES.code].order, null);
   assert.deepEqual(b.skipped, [{ week: "2026-03-06", codes: ["ES"] }], "a week whose report was not available yet is recorded");

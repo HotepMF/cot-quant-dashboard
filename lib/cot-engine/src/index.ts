@@ -124,5 +124,5 @@ export { HAND_CATEGORIES, HAND_FOOTER, HAND_PARTICIPATION, HAND_POWER_PRODUCERS,
 export type { CrowdedRow, HandCard, HandCardId, HandReport, HandSnapshot, ParticipationRow, RangeRow, Reading } from "./invisible-hand";
 export { CALENDAR_THROUGH, EVENT_EFFECTS, eventTags, marketEvents } from "./calendar";
 export type { EventKind, EventTags, MarketEvent, RangeEffect } from "./calendar";
-export { DEMO_MARKETS, DEMO_RULES_VERSION, DEMO_START_BALANCE, DEMO_TARGET_SIGMA, advanceDemo, emptyDemo, stepMarket, triggerPattern, weeklySigma } from "./demo";
+export { DEMO_MARKETS, DEMO_RULES_VERSION, DEMO_STATE_VERSION, DEMO_START_BALANCE, DEMO_TARGET_SIGMA, advanceDemo, emptyDemo, stepMarket, triggerPattern, weeklySigma } from "./demo";
 export type { DemoMarketState, DemoOrder, DemoPayload, DemoPosition, DemoState, DemoTrade, WeekBar } from "./demo";

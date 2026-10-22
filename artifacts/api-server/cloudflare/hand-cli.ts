@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
-import { CORE_MARKETS, DEMO_MARKETS, HAND_PARTICIPATION, HAND_RANGE_TICKERS, HAND_TICKERS, advanceDemo, emptyDemo, type DemoPayload, type DemoState, type WeekBar } from "@workspace/cot-engine";
+import { CORE_MARKETS, DEMO_MARKETS, DEMO_STATE_VERSION, HAND_PARTICIPATION, HAND_RANGE_TICKERS, HAND_TICKERS, advanceDemo, emptyDemo, type DemoPayload, type DemoState, type WeekBar } from "@workspace/cot-engine";
 import { buildHand, completedWeeks, filterByWeek } from "./hand-compute";
 import { cftcParticipation, siteHistories, treasuryCurve, yahooBars, type DailyBars } from "./hand-sources";
 import { statement } from "./database";
@@ -58,9 +58,11 @@ async function main() {
   // The demo account advances once per completed week; a failure here never affects the numbers above.
   try {
     const saved = await statement(db, "SELECT payload FROM cot_cf_documents WHERE key=?", DEMO_JOB).first<{ payload: string }>();
-    const prev: DemoState = saved ? JSON.parse(saved.payload) : emptyDemo();
+    const stored: DemoState | null = saved ? JSON.parse(saved.payload) : null;
+    // An account saved in an older format restarts clean (v1 could place orders for a week already under way).
+    const prev: DemoState = stored && stored.version >= DEMO_STATE_VERSION ? stored : emptyDemo();
     const next = advanceDemo(prev, demoBars, filters);
-    if (next.lastWeek && next.lastWeek !== prev.lastWeek) {
+    if (next.lastWeek && (next.lastWeek !== prev.lastWeek || stored?.version !== next.version)) {
       const filtersNow = DEMO_MARKETS.flatMap(m => {
         const dir = filters[m.code]?.[next.lastWeek!];
         return dir ? [{ code: m.code, symbol: m.symbol, dir, week: next.lastWeek! }] : [];
