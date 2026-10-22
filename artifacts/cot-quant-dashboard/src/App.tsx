@@ -7,7 +7,7 @@ import {
 import Papa from "papaparse";
 import { MarketSelector } from "@/components/market-selector";
 import { CftcUpdateStatus } from "@/components/cftc-update-status";
-import { Link, Route, Switch } from "wouter";
+import { Route, Switch } from "wouter";
 import { CONSOLIDATED_COMPONENTS, computeRows } from "@workspace/cot-engine";
 import type { RawRow } from "@workspace/cot-engine";
 import { useSharedSettings, STORAGE_SOURCE_MODE } from "@/lib/settings-store";
@@ -16,10 +16,12 @@ import { SectorSignalsPage } from "@/pages/sector-signals";
 import { SignalWatchlistPage } from "@/pages/signal-watchlist";
 import { HowItWorksPage } from "@/pages/how-it-works";
 import { SectorsPage } from "@/pages/sectors";
+import { InvisibleHandPage } from "@/pages/invisible-hand";
+import { SiteBrand, SiteMobileNav, SiteNav, workspaceSections } from "@/components/site-nav";
 import NotFound from "@/pages/not-found";
 import {
-  Activity, BarChart3, CircleHelp, Download, FileUp, Moon, Printer, RefreshCw,
-  Settings2, Sun, Upload, Waves, Database, AlertTriangle, Clock3, Layers, LayoutGrid, ListOrdered,
+  Activity, Download, FileUp, Moon, Printer, RefreshCw,
+  Sun, Upload, Database, AlertTriangle, Clock3,
 } from "lucide-react";
 import {
   getGetCotMarketHistoryQueryKey, getGetCotMarketsQueryKey,
@@ -54,12 +56,6 @@ const STORAGE_DATA = "cot-quant-local-rows-v1";
 const STORAGE_THEME = "cot-quant-theme-v2";
 const STORAGE_SOURCE = "cot-quant-source-selection-v1";
 const STORAGE_CONSOLIDATED_DEFAULT = "cot-quant-consolidated-default-v1";
-const sections = [
-  { id: "summary", label: "Market overview", icon: BarChart3 },
-  { id: "positioning", label: "Positioning", icon: Waves },
-  { id: "signals", label: "Signal analysis", icon: Activity },
-  { id: "configuration", label: "Configuration", icon: Settings2 },
-];
 const fmt = (n: number | null | undefined, digits = 0) => n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits });
 const signed = (n: number | null | undefined, digits = 0) => n == null || !Number.isFinite(n) ? "—" : `${n > 0 ? "+" : ""}${fmt(n, digits)}`;
 const formatDate = (s: string) => new Date(`${s}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -279,11 +275,24 @@ function Dashboard() {
       const visibleSection = entries.filter(e => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
       if (visibleSection) setActiveSection(visibleSection.target.id);
     }, { rootMargin: "-15% 0px -65% 0px", threshold: [0, .2, .5] });
-    sections.forEach(s => { const el = document.getElementById(s.id); if (el) observer.observe(el); });
+    workspaceSections.forEach(s => { const el = document.getElementById(s.id); if (el) observer.observe(el); });
     return () => observer.disconnect();
   }, []);
   function setSetting<K extends keyof Settings>(key: K, value: Settings[K]) { setSettings(s => ({ ...s, [key]: value })); }
   function navigate(id: string) { setActiveSection(id); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  // Arriving from another page's workspace link (/#positioning): scroll there once the section has rendered.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!workspaceSections.some(s => s.id === id)) return;
+    let tries = 0, timer = 0;
+    const go = () => {
+      const el = document.getElementById(id);
+      if (el) { setActiveSection(id); el.scrollIntoView({ block: "start" }); }
+      else if (tries++ < 40) timer = window.setTimeout(go, 50);
+    };
+    go();
+    return () => window.clearTimeout(timer);
+  }, []);
   function handleRefresh() {
     setRefreshing(true);
     void Promise.all([marketsQuery.refetch(), !isImported ? historyQuery.refetch() : Promise.resolve(null)]).finally(() => {
@@ -364,21 +373,8 @@ function Dashboard() {
 
   return <div className="shell">
     <aside className="sidebar">
-      <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 8px 30px" }}>
-        <div className="brand-mark"><Activity size={18} /></div>
-        <div><div style={{ fontFamily: "var(--app-font-serif)", fontWeight: 800, fontSize: 14, letterSpacing: "-.04em" }}>COT / QUANT</div><div style={{ font: "9px var(--app-font-mono)", color: "rgba(244,241,232,.5)", marginTop: 3 }}>RESEARCH TERMINAL</div></div>
-      </div>
-      <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)", padding: "0 12px 8px" }}>Workspace</div>
-      <nav style={{ display: "grid", gap: 3 }}>
-        {sections.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-link ${activeSection === id ? "active" : ""}`} onClick={() => navigate(id)} data-testid={`nav-${id}`}><Icon size={16} />{label}</button>)}
-      </nav>
-      <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)", padding: "22px 12px 8px" }}>All-market scan</div>
-      <nav style={{ display: "grid", gap: 3 }}>
-        <Link href="/sector-signals" className="nav-link" data-testid="nav-sector-signals"><LayoutGrid size={16} />Sector signals</Link>
-        <Link href="/signal-watchlist" className="nav-link" data-testid="nav-signal-watchlist"><ListOrdered size={16} />Signal watchlist</Link>
-        <Link href="/sectors" className="nav-link" data-testid="nav-sectors"><Layers size={16} />SPDR sectors</Link>
-        <Link href="/how-it-works" className="nav-link" data-testid="nav-how-it-works"><CircleHelp size={16} />How it works</Link>
-      </nav>
+      <SiteBrand />
+      <SiteNav activeSection={activeSection} onSection={navigate} />
       <div style={{ marginTop: "auto", borderTop: "1px solid hsl(var(--sidebar-border))", padding: "18px 8px 0" }}>
         <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)" }}>Data mode</div>
         <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
@@ -637,13 +633,7 @@ function Dashboard() {
         </footer>
       </section>
     </main>
-    <nav className="mobile-nav print-hidden">
-      {sections.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-link ${activeSection === id ? "active" : ""}`} onClick={() => navigate(id)} aria-label={label} data-testid={`mobile-nav-${id}`}><Icon size={16} /><span>{label.split(" ")[0]}</span></button>)}
-      <Link href="/sector-signals" className="nav-link" aria-label="Sector signals" data-testid="mobile-nav-sector-signals"><LayoutGrid size={16} /><span>Sectors</span></Link>
-      <Link href="/signal-watchlist" className="nav-link" aria-label="Signal watchlist" data-testid="mobile-nav-signal-watchlist"><ListOrdered size={16} /><span>Watchlist</span></Link>
-      <Link href="/sectors" className="nav-link" aria-label="SPDR sectors" data-testid="mobile-nav-sectors"><Layers size={16} /><span>SPDR</span></Link>
-      <Link href="/how-it-works" className="nav-link" aria-label="How it works" data-testid="mobile-nav-how-it-works"><CircleHelp size={16} /><span>Info</span></Link>
-    </nav>
+    <SiteMobileNav activeSection={activeSection} onSection={navigate} />
   </div>;
 }
 
@@ -654,6 +644,7 @@ function App() {
     <Route path="/signal-watchlist" component={SignalWatchlistPage} />
     <Route path="/how-it-works" component={HowItWorksPage} />
     <Route path="/sectors" component={SectorsPage} />
+    <Route path="/invisible-hand" component={InvisibleHandPage} />
     <Route component={NotFound} />
   </Switch>;
 }

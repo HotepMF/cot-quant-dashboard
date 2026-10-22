@@ -10,7 +10,7 @@ jobs:
   sectors:
     # Dispatched by the Cloudflare Worker on weekdays after the close; can also be run by hand.
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,6 +22,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build and store the daily sectors snapshot
         run: pnpm --filter @workspace/api-server exec tsx cloudflare/sectors-cli.ts
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
+          CFTC_APP_TOKEN: ${{ secrets.CFTC_APP_TOKEN }}
+          SECTORS_PRICE_SOURCE: ${{ vars.SECTORS_PRICE_SOURCE || 'yahoo' }}
+      - name: Refresh The Invisible Hand numbers
+        # Runs only after the step above succeeds; its own failure never marks the data update failed.
+        continue-on-error: true
+        run: pnpm --filter @workspace/api-server exec tsx cloudflare/hand-cli.ts
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_D1_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}

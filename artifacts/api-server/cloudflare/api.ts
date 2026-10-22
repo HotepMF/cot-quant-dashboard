@@ -8,23 +8,29 @@ export const json = (body: unknown, status = 200) => response(JSON.stringify(bod
 const response = (payload: string, status = 200, snapshot?: string) => new Response(payload, {
   status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", "X-COT-Server-Time": String(Date.now()), ...(snapshot ? { "X-COT-Snapshot": snapshot } : {}) },
 });
+/** Snapshot documents served as stored. */
+const DOCUMENTS: Record<string, { key: string; name: string }> = {
+  "/api/sectors": { key: "sectors", name: "sectors snapshot" },
+  "/api/invisible-hand": { key: "invisible-hand", name: "Invisible Hand snapshot" },
+};
 const unavailable = () => json({ message: "No complete prepared CFTC data is available yet. Configure GitHub automation and run the initial update." }, 503);
 
 export async function handleApi(request: Request, env: Env, ctx?: ExecutionContext, cache?: Cache, database = withDatabase): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
   if (path === "/api/healthz") return request.method === "GET" ? json({ status: "ok" }) : json({ message: "Method not allowed." }, 405);
-  if (path === "/api/sectors") {
+  const document = DOCUMENTS[path];
+  if (document) {
     if (request.method !== "GET") return json({ message: "Method not allowed." }, 405);
     try {
-      // Pre-serialized daily snapshot from the sectors job; the Worker only forwards it.
+      // Pre-serialized snapshot written by a GitHub job; the Worker only forwards it.
       return await database(env, async sql => {
-        const saved = await statement(sql, "SELECT payload FROM cot_cf_documents WHERE key='sectors'").first<{ payload: string }>();
-        return saved ? response(saved.payload) : json({ message: "The sectors snapshot has not been prepared yet." }, 503);
+        const saved = await statement(sql, "SELECT payload FROM cot_cf_documents WHERE key=?", document.key).first<{ payload: string }>();
+        return saved ? response(saved.payload) : json({ message: `The ${document.name} has not been prepared yet.` }, 503);
       });
     } catch (error) {
-      console.error("sectors-api-failed", { kind: error instanceof Error ? error.name : "UnknownError" });
-      return json({ message: "Sectors storage is temporarily unavailable." }, 503);
+      console.error("document-api-failed", { key: document.key, kind: error instanceof Error ? error.name : "UnknownError" });
+      return json({ message: `${document.name[0].toUpperCase()}${document.name.slice(1)} storage is temporarily unavailable.` }, 503);
     }
   }
   if (!["/api/cot/update-status", "/api/cot/markets", "/api/cot/market", "/api/cot/screener", "/api/cot/screener/refresh"].includes(path)) return json({ message: "API route not found." }, 404);

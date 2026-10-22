@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
-import { Link, useLocation } from "wouter";
-import { Activity, Moon, Sun } from "lucide-react";
+import { Link } from "wouter";
+import { Moon, Sun } from "lucide-react";
 import { CORE_GROUPS, CORE_MARKETS, SPECIALTY_MARKETS } from "@workspace/cot-engine";
-import { useTheme, workspaceLinks } from "@/components/scanner/scanner-shell";
+import { useTheme } from "@/components/scanner/scanner-shell";
+import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
 
 function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
   return <section id={id} className="card hiw-section" data-testid={`section-${id}`}>
@@ -13,28 +14,21 @@ function Section({ id, title, children }: { id: string; title: string; children:
 }
 
 export function HowItWorksPage() {
-  const [location] = useLocation();
   const [isDark, setIsDark] = useTheme();
   useEffect(() => { window.scrollTo(0, 0); document.title = "How it works · COT Quant"; }, []);
   const thin = CORE_MARKETS.filter(m => m.quality === "thin").map(m => m.symbol).join(", ");
 
   return <div className="shell">
     <aside className="sidebar">
-      <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 8px 30px" }}>
-        <div className="brand-mark"><Activity size={18} /></div>
-        <div><div style={{ fontFamily: "var(--app-font-serif)", fontWeight: 800, fontSize: 14, letterSpacing: "-.04em" }}>COT / QUANT</div><div style={{ font: "9px var(--app-font-mono)", color: "rgba(244,241,232,.5)", marginTop: 3 }}>RESEARCH TERMINAL</div></div>
-      </div>
-      <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)", padding: "0 12px 8px" }}>Workspace</div>
-      <nav style={{ display: "grid", gap: 3 }}>
-        {workspaceLinks.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${location === href ? "active" : ""}`}><Icon size={16} />{label}</Link>)}
-      </nav>
+      <SiteBrand />
+      <SiteNav />
     </aside>
     <main className="main">
       <header className="topline">
         <div>
           <div className="eyebrow" style={{ marginBottom: 9 }}>Reference</div>
           <h1 className="page-title display">How it works</h1>
-          <p className="subtle scan-lede">What the COT report is, how this site reads it, which markets it shows, how the SPDR sectors page works, when data updates, and what it can't tell you.</p>
+          <p className="subtle scan-lede">What the COT report is, how this site reads it, which markets it shows, how the SPDR sectors and Invisible Hand pages work, when data updates, and what it can't tell you.</p>
         </div>
         <div className="toolbar print-hidden">
           <button className="icon-btn" aria-label="Toggle dark mode" title="Toggle theme" onClick={() => setIsDark(v => !v)}>{isDark ? <Sun size={15} /> : <Moon size={15} />}</button>
@@ -87,12 +81,24 @@ export function HowItWorksPage() {
           <p>Panel text is generated from the numbers each day and describes what is happening, not what comes next.</p>
         </Section>
 
+        <Section id="invisible-hand" title="The Invisible Hand">
+          <p><Link href="/invisible-hand">The Invisible Hand</Link> is the weekly macro backdrop: the broad forces behind the market and who is positioned in each.</p>
+          <ul>
+            <li><b>Theme cards</b>: credit, rates, power and gas, volatility, and the AI and power trade. A card shows a label (such as "steepener" or "high volatility") only where that label passed our accuracy and stability tests; otherwise it shows the readings alone. Cards waiting on a data source say so.</li>
+            <li><b>Who is positioned</b>: for each theme, the trader groups active in the related futures, with their net and gross positions as a share of open interest, where that sits in its 3-year range, and the 4-week change. Rows with fewer than 20 traders, or where four traders hold more than half of one side, are withheld because they would describe a few firms, not a market.</li>
+            <li><b>Past pattern</b>: what sectors did alongside each state in our 1999–2026 tests, shown only where the pattern beat chance. It describes what happened at the same time, not what came next.</li>
+            <li><b>Timing</b>: positioning updates minutes after each Friday CFTC release; prices and yields after each close.</li>
+            <li><b>Our read</b> (coming soon): a short weekly read. Every statement will be labeled Validated (backed by our tested data) or Speculation (our judgment, with the reasoning shown).</li>
+          </ul>
+        </Section>
+
         <Section id="updates" title="Data & updates">
           <ul>
             <li><b>Nothing here is real-time.</b> The site shows end-of-day and weekly data, built for understanding the backdrop, not for timing trades.</li>
             <li><b>COT positioning</b>: weekly. Positions as of Tuesday are published Friday at 3:30 p.m. ET, and the site checks for the release automatically.</li>
             <li><b>Sector and futures prices</b>: end of day, updated on weekday evenings after the U.S. close. During the trading day the page shows the previous close. The page header shows both dates, for example "Prices Oct 21 close · CFTC Oct 13".</li>
             <li><b>If prices stop updating</b>, the page shows a warning with the last update date instead of quietly showing old numbers.</li>
+            <li><b>The Invisible Hand</b>: positioning minutes after each Friday CFTC release; prices, volatility and yields after each weekday close.</li>
             <li><b>Sources</b>: CFTC Commitments of Traders (Legacy, Disaggregated and Traders in Financial Futures); end-of-day prices from Yahoo Finance; Treasury yields from the U.S. Treasury's daily par yield curve.</li>
           </ul>
         </Section>
@@ -127,8 +133,6 @@ export function HowItWorksPage() {
         <span>Setups are mechanical rule states, not recommendations.</span>
       </footer>
     </main>
-    <nav className="mobile-nav print-hidden">
-      {workspaceLinks.map(({ href, short, label, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${location === href ? "active" : ""}`} aria-label={label}><Icon size={16} /><span>{short}</span></Link>)}
-    </nav>
+    <SiteMobileNav />
   </div>;
 }

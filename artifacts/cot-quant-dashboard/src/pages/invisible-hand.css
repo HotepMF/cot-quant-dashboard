@@ -1,0 +1,19 @@
+/* The Invisible Hand: builds on the sectors page's terminal panels (sectors.css). */
+.ih-disclaimer { border-left-color:hsl(var(--primary)); }
+.ih-cards { display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:12px;align-items:start; }
+.ih-headline { font-size:13.5px;font-weight:500; }
+.ih-note { display:flex;gap:7px;align-items:flex-start;color:hsl(var(--muted-foreground));font-size:11.5px; }
+.ih-note svg { flex:none;margin-top:2px; }
+.ih-pending { color:#e6a752 !important; }
+.ih-readings { table-layout:fixed;min-width:0 !important; }
+.ih-readings td { white-space:normal !important;vertical-align:top;overflow-wrap:anywhere; }
+.ih-readings td.num { width:118px; }
+.ih-rl { color:hsl(var(--muted-foreground));width:34%; }
+.ih-part { min-width:560px !important; }
+.ih-rn { color:hsl(var(--muted-foreground));font-size:11px; }
+.ih-tag { font:10px var(--app-font-mono);letter-spacing:.06em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin-right:8px; }
+.ih-subhead { border-top:1px solid hsl(var(--border)); }
+.ih-part td:nth-child(2) { color:hsl(var(--muted-foreground)); }
+.ih-crowd { color:#e6a752; }
+.ih-withheld { color:hsl(var(--muted-foreground));font-style:italic;text-align:center !important; }
+@media(max-width:760px) { .ih-cards { grid-template-columns:minmax(0,1fr); } }

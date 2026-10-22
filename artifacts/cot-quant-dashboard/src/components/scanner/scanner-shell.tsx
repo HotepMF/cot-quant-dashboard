@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useLocation } from "wouter";
-import { Activity, AlertTriangle, BarChart3, ChevronDown, CircleHelp, Clock3, Info, Layers, LayoutGrid, ListOrdered, Moon, RefreshCw, Sun } from "lucide-react";
+import { AlertTriangle, ChevronDown, Clock3, Info, Moon, RefreshCw, Sun } from "lucide-react";
+import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
 import { STORAGE_THEME, useSharedSettings } from "@/lib/settings-store";
 import type { Settings } from "@/lib/settings-store";
 import type { useScreener } from "@/hooks/use-screener";
@@ -11,13 +11,6 @@ import "./scanner.css";
 
 type Screener = ReturnType<typeof useScreener>;
 
-const links = [
-  { href: "/", label: "Market detail", short: "Detail", icon: BarChart3 },
-  { href: "/sector-signals", label: "Sector signals", short: "Sectors", icon: LayoutGrid },
-  { href: "/signal-watchlist", label: "Signal watchlist", short: "Watchlist", icon: ListOrdered },
-  { href: "/sectors", label: "SPDR sectors", short: "SPDR", icon: Layers },
-  { href: "/how-it-works", label: "How it works", short: "Info", icon: CircleHelp },
-];
 
 function useTheme() {
   const [isDark, setIsDark] = useState(() => { try { return localStorage.getItem(STORAGE_THEME) !== "light"; } catch { return true; } });
@@ -28,22 +21,15 @@ function useTheme() {
   return [isDark, setIsDark] as const;
 }
 
-export { links as workspaceLinks, useTheme };
+export { useTheme };
 
 export function ScannerShell({ eyebrow, title, lede, screener, children }: { eyebrow: string; title: string; lede: string; screener: Screener; children: ReactNode }) {
-  const [location] = useLocation();
   const [isDark, setIsDark] = useTheme();
   useEffect(() => { window.scrollTo(0, 0); document.title = `${title} · COT Quant`; }, [title]);
   return <div className="shell">
     <aside className="sidebar">
-      <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 8px 30px" }}>
-        <div className="brand-mark"><Activity size={18} /></div>
-        <div><div style={{ fontFamily: "var(--app-font-serif)", fontWeight: 800, fontSize: 14, letterSpacing: "-.04em" }}>COT / QUANT</div><div style={{ font: "9px var(--app-font-mono)", color: "rgba(244,241,232,.5)", marginTop: 3 }}>RESEARCH TERMINAL</div></div>
-      </div>
-      <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)", padding: "0 12px 8px" }}>Workspace</div>
-      <nav style={{ display: "grid", gap: 3 }}>
-        {links.map(({ href, label, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${location === href ? "active" : ""}`} data-testid={`nav-${label.toLowerCase().replace(/ /g, "-")}`}><Icon size={16} />{label}</Link>)}
-      </nav>
+      <SiteBrand />
+      <SiteNav />
       <div style={{ marginTop: "auto", borderTop: "1px solid hsl(var(--sidebar-border))", padding: "18px 8px 0" }}>
         <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)" }}>Scanner source</div>
         <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}><span className="dot" style={{ background: screener.query.isError ? "#e27667" : screener.scanning ? "#e6a752" : "#65c7a4" }} />Official CFTC data</div>
@@ -73,9 +59,7 @@ export function ScannerShell({ eyebrow, title, lede, screener, children }: { eye
         <span>Setups are mechanical rule states, not recommendations.</span>
       </footer>
     </main>
-    <nav className="mobile-nav print-hidden">
-      {links.map(({ href, short, label, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${location === href ? "active" : ""}`} aria-label={label} data-testid={`mobile-nav-${short.toLowerCase()}`}><Icon size={16} /><span>{short}</span></Link>)}
-    </nav>
+    <SiteMobileNav />
   </div>;
 }
 

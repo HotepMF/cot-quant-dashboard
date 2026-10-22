@@ -14,6 +14,7 @@ Everything runs on Cloudflare and GitHub:
 | Database | Cloudflare D1 `cot-quant-data` (`deployment/cloudflare/migrations`) | Prepared CFTC snapshots, histories, sectors snapshot |
 | CFTC collection | GitHub Actions `cftc-update.yml`, started by the Worker's 10-minute cron | Collects the weekly reports after the Friday release |
 | Sectors snapshot | GitHub Actions `sectors-update.yml`, started on weekdays after 17:30 New York | End-of-day SPDR sector prices, positioning and yields |
+| Invisible Hand numbers | A follow-on step in both workflows above (`hand-cli.ts`) | Weekly macro theme cards and participation rows, refreshed after each CFTC collection and each evening close |
 | Deploys | Cloudflare Workers Builds on every merge to `main` | `pnpm cloudflare:build` then `pnpm cloudflare:publish-built` |
 
 Setup, credentials and Free-plan limits: see [CLOUDFLARE.md](CLOUDFLARE.md).
@@ -21,9 +22,9 @@ Setup, credentials and Free-plan limits: see [CLOUDFLARE.md](CLOUDFLARE.md).
 ## Repository map
 
 - `artifacts/cot-quant-dashboard` — the React dashboard (Vite).
-- `artifacts/api-server/cloudflare` — the Worker (API, cron launcher) and the GitHub job CLIs (`collect-cli.ts`, `sectors-cli.ts`).
+- `artifacts/api-server/cloudflare` — the Worker (API, cron launcher) and the GitHub job CLIs (`collect-cli.ts`, `sectors-cli.ts`, `hand-cli.ts`; `hand-cli.ts --dry-run` prints the snapshot without saving).
 - `artifacts/api-server/tests` — Worker, collector, sectors, signal-rule and schedule tests (real D1 via Miniflare).
-- `lib/cot-engine` — shared signal rules, core market list, sector definitions.
+- `lib/cot-engine` — shared signal rules, core market list, sector and Invisible Hand definitions.
 - `lib/api-spec` — the OpenAPI contract; `pnpm --filter @workspace/api-spec run codegen` regenerates `lib/api-client-react`.
 - `deployment/cloudflare/migrations` — additive D1 migrations, applied on deploy.
 
