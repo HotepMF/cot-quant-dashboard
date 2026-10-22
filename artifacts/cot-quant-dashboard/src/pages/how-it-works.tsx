@@ -41,7 +41,7 @@ export function HowItWorksPage() {
       </header>
 
       <nav className="hiw-toc print-hidden" aria-label="On this page">
-        {[["cot", "The COT report"], ["reading", "Reading the site"], ["model", "The default model"], ["settings", "Settings"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["invisible-hand", "The Invisible Hand"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
+        {[["cot", "The COT report"], ["reading", "Reading the site"], ["model", "The default model"], ["settings", "Settings"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["invisible-hand", "The Invisible Hand"], ["curve", "Futures curve"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
           <a key={id} href={`#${id}`} className="ms-chip" onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</a>)}
       </nav>
 
@@ -130,6 +130,20 @@ export function HowItWorksPage() {
           </ul>
         </Section>
 
+        <Section id="curve" title="Futures curve">
+          <p>Each market detail page has a <b>curve</b> gauge and a <b>volatility</b> gauge, and The Invisible Hand lists the curves that are stretched. All of it is labeled <b>Measured · not a signal</b>.</p>
+          <ul>
+            <li><b>Backwardation</b>: the nearest contract trades above the next one. Buyers pay up for delivery now, which usually means tight supply. <b>Contango</b> is the reverse, the normal shape when supply is ample and storage costs money.</li>
+            <li><b>EOD spread</b>: front contract minus second contract at the day's close, in price and in dollars per contract. Positive = backwardation. The small line shows the same two contracts over about 3 months.</li>
+            <li><b>Carry per year</b>: ln(front ÷ second), divided by the years between the two delivery months, so markets with monthly and quarterly contracts compare fairly.</li>
+            <li><b>The gauge</b> places today's carry within that market's own 2002–2024 history (VIX: 2004–2026). The colored ends are its deepest 20% each way. A gold curve near flat can read "deep backwardation for gold" while still in contango, because gold is almost always in contango.</li>
+            <li><b>Volatility gauge</b>: how big moves are now compared with what is usual for that market. It uses the front contract's last 20 daily moves, annualised, divided by the market's own 5-year normal (roll days removed). Under 0.75× reads <b>Calm</b>, 0.75–1.25× <b>Normal</b>, 1.25–1.75× <b>Elevated</b>, and 1.75× or more <b>Extreme</b>. These are round reading bands, not tested signals. "Typical day" is one day's usual move at the current volatility, in percent and in dollars for one contract; about two days in three stay inside it.</li>
+            <li><b>What we found</b>: in commodities, volatility over the next 4 weeks ran about 19% above a flat curve in deep backwardation, and about 13% above in deep contango (2002–2024, 23 markets). That matches published research: tight inventories make prices jumpier (Fama and French 1988; Ng and Pirrong 1994), and volatility rises with the curve's slope in both directions (Kogan, Livdan and Yaron 2009). For index, rate, currency and crypto futures the curve mostly reflects interest rates and dividends, and we found no effect.</li>
+            <li><b>What we did not find</b>: using the curve as a filter on the site's COT signals did not improve them in our pre-registered test. Commercials are usually positioned against the curve, so the COT signal already carries most of what the curve says. Use the curve for risk (stops, size), not for direction.</li>
+            <li><b>Limits</b>: the historical ranges come from research data that does not always use the front two contracts, so they are close, not exact. Prices are Yahoo end-of-day (VIX: Cboe settlements). Lumber has too little history for a range. The site saves every day's curve, so the ranges can move to our own data once there is enough.</li>
+          </ul>
+        </Section>
+
         <Section id="updates" title="Data & updates">
           <ul>
             <li><b>Nothing here is real-time.</b> The site shows end-of-day and weekly data, built for understanding the backdrop, not for timing trades.</li>
@@ -137,7 +151,7 @@ export function HowItWorksPage() {
             <li><b>Sector and futures prices</b>: end of day, updated on weekday evenings after the U.S. close. During the trading day the page shows the previous close. The page header shows both dates, for example "Prices Oct 21 close · CFTC Oct 13".</li>
             <li><b>If prices stop updating</b>, the page shows a warning with the last update date instead of quietly showing old numbers.</li>
             <li><b>The Invisible Hand</b>: positioning minutes after each Friday CFTC release; prices, volatility and yields after each weekday close. The demo account advances once a week, after the Friday close.</li>
-            <li><b>Sources</b>: CFTC Commitments of Traders (Legacy, Disaggregated and Traders in Financial Futures); end-of-day prices from Yahoo Finance; Treasury yields from the U.S. Treasury's daily par yield curve.</li>
+            <li><b>Sources</b>: CFTC Commitments of Traders (Legacy, Disaggregated and Traders in Financial Futures); end-of-day prices from Yahoo Finance (futures curves: individual contracts; VIX futures: Cboe settlements); Treasury yields from the U.S. Treasury's daily par yield curve.</li>
           </ul>
         </Section>
 

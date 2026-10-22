@@ -11,6 +11,7 @@ import { Route, Switch } from "wouter";
 import { CONSOLIDATED_COMPONENTS, computeRows } from "@workspace/cot-engine";
 import type { RawRow } from "@workspace/cot-engine";
 import { useSharedSettings, STORAGE_SOURCE_MODE } from "@/lib/settings-store";
+import { CurvePanel } from "@/components/curve-gauge";
 import { SettingsBar } from "@/components/settings-bar";
 import { Link } from "wouter";
 import type { Settings } from "@/lib/settings-store";
@@ -383,6 +384,7 @@ function Dashboard() {
             </div>
           </div>
         </div>
+        {liveActive && <CurvePanel code={effectiveMarket?.code} />}
       </section>
 
       <section id="positioning" className="section">

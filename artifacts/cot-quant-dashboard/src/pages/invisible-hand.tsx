@@ -8,6 +8,7 @@ import { EventTags, eventDay, newYorkToday } from "@/components/event-tags";
 import { DemoAccount } from "@/components/demo-account";
 import { useTheme } from "@/components/scanner/scanner-shell";
 import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
+import { StretchedCurves } from "@/components/curve-gauge";
 import "./sectors.css";
 import "./invisible-hand.css";
 
@@ -157,6 +158,7 @@ export function InvisibleHandPage() {
           <div className="sx-rd"><p className="muted">A short weekly read is on its way: what the numbers below add up to, how we lean, and what would change our mind. Every statement will be labeled <b>Validated</b> (backed by our tested data) or <b>Speculation</b> (with the reasoning shown). For now this page shows the numbers only.</p></div>
         </section>
         <DayTrader data={data} />
+        <StretchedCurves />
         <DemoAccount />
         <div className="ih-cards">{data.cards.map(c => <Card key={c.id} card={c} rows={data.participation.filter(p => p.card === c.id)} />)}</div>
         <footer className="sx-foot">

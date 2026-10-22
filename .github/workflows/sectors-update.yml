@@ -36,3 +36,10 @@ jobs:
           CLOUDFLARE_D1_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
           CFTC_APP_TOKEN: ${{ secrets.CFTC_APP_TOKEN }}
           SECTORS_PRICE_SOURCE: ${{ vars.SECTORS_PRICE_SOURCE || 'yahoo' }}
+      - name: Save the daily curve archive
+        # Research archive of the first few contracts per core market; its failure never marks the data update failed.
+        continue-on-error: true
+        run: pnpm --filter @workspace/api-server exec tsx cloudflare/curves-cli.ts
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
