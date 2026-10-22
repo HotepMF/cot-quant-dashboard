@@ -99,7 +99,8 @@ function Dashboard() {
     try { return localStorage.getItem(`${STORAGE_SOURCE}:market`) ?? ""; } catch { return ""; }
   });
   const [activeSection, setActiveSection] = useState("summary");
-  const [chartWeeks, setChartWeeks] = useState(26);
+  // Chart ranges follow the 16-week time grades; 32 shows the lookback window next to the 16 weeks before it.
+  const [chartWeeks, setChartWeeks] = useState(32);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMark, setRefreshMark] = useState("");
   const [tablePage, setTablePage] = useState(0);
@@ -340,7 +341,7 @@ function Dashboard() {
         </div>
         <div className="section overview-grid">
           <div className="card">
-            <div className="card-head"><div><h2 className="panel-title">Weekly net positioning</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · {oiNorm ? "net as % of open interest" : "net contracts, long − short"}</div></div><div className="toolbar"><select className="select print-hidden" style={{ width: 115, minHeight: 32, padding: "5px 8px", fontSize: 11 }} value={chartWeeks} onChange={e => setChartWeeks(Number(e.target.value))} aria-label="Chart history range" data-testid="select-chart-range"><option value={13}>13 weeks</option><option value={26}>26 weeks</option><option value={52}>52 weeks</option><option value={0}>All rows</option></select>{exportButton("weekly-positioning", exportRows(visible))}</div></div>
+            <div className="card-head"><div><h2 className="panel-title">Weekly net positioning</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · {oiNorm ? "net as % of open interest" : "net contracts, long − short"}</div></div><div className="toolbar"><select className="select print-hidden" style={{ width: 115, minHeight: 32, padding: "5px 8px", fontSize: 11 }} value={chartWeeks} onChange={e => setChartWeeks(Number(e.target.value))} aria-label="Chart history range" data-testid="select-chart-range"><option value={16}>16 weeks</option><option value={32}>32 weeks</option><option value={48}>48 weeks</option><option value={64}>64 weeks</option><option value={0}>All rows</option></select>{exportButton("weekly-positioning", exportRows(visible))}</div></div>
             <div className="card-body">
               <div className="control-group" style={{ marginBottom: 8 }}>
                 {([["showLT", "Large", C.large], ["showST", "Small", C.small], ["showCH", "Commercial", C.commercial]] as const).map(([key, label, color]) => <button key={key} className={`seg ${settings[key] ? "active" : ""}`} style={settings[key] ? { background: color, borderColor: color, color: "#fff" } : {}} onClick={() => setSetting(key, !settings[key])}>{label}</button>)}
