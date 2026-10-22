@@ -43,22 +43,32 @@ test("Database failures become explicit, sanitized HTTP 503 responses", async ()
   assert.doesNotMatch(text, /postgres:|password|connectionString|SELECT/);
 });
 
-test("Official history parsing preserves exact market names and safely quotes names", async t => {
+test("Official history parsing preserves exact market names and safely quotes codes", async t => {
   let query = "";
   t.mock.method(globalThis, "fetch", async (url: URL) => {
     query = url.searchParams.get("query")!;
     return new Response(JSON.stringify([{
-      market_and_exchange_names: "TEST'S MARKET - EXCHANGE", report_date_as_yyyy_mm_dd: "2026-10-13T00:00:00.000",
+      cftc_contract_market_code: "01'2345", report_date_as_yyyy_mm_dd: "2026-10-13T00:00:00.000",
       large_traders: "11", commercial_hedgers: "-12", small_traders: "1", open_interest: "100",
     }]));
   });
-  const histories = await officialHistories("futures", "2026-10-13", [{ name: "TEST'S MARKET - EXCHANGE", code: "012345" }]);
-  assert.match(query, /TEST''S MARKET - EXCHANGE/);
+  const histories = await officialHistories("futures", "2026-10-13", [{ name: "TEST'S MARKET - EXCHANGE", code: "01'2345" }]);
+  assert.match(query, /cftc_contract_market_code IN \('01''2345'\)/);
   assert.equal(histories.get("TEST'S MARKET - EXCHANGE")!.rows[0].commercial_hedgers, -12);
 });
 
+test("History keeps observations published under a contract's earlier name", async t => {
+  const row = (date: string, oldName: boolean) => ({
+    cftc_contract_market_code: "043602", market_and_exchange_names: oldName ? "10-YEAR U.S. TREASURY NOTES - CHICAGO BOARD OF TRADE" : "UST 10Y NOTE - CHICAGO BOARD OF TRADE",
+    report_date_as_yyyy_mm_dd: `${date}T00:00:00.000`, large_traders: "1", commercial_hedgers: "-1", small_traders: "0", open_interest: "10",
+  });
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify([row("2022-02-01", true), row("2022-02-08", false), row("2026-10-13", false)])));
+  const histories = await officialHistories("futures", "2026-10-13", [{ name: "UST 10Y NOTE - CHICAGO BOARD OF TRADE", code: "043602" }]);
+  assert.deepEqual(histories.get("UST 10Y NOTE - CHICAGO BOARD OF TRADE")!.rows.map(r => r.date), ["2022-02-01", "2022-02-08", "2026-10-13"]);
+});
+
 test("Conflicting, invalid, and incomplete CFTC batches are rejected", async t => {
-  const base = { market_and_exchange_names: "TEST", report_date_as_yyyy_mm_dd: "2026-10-13T00:00:00.000", large_traders: "11", commercial_hedgers: "-12", small_traders: "1", open_interest: "100" };
+  const base = { cftc_contract_market_code: "1", report_date_as_yyyy_mm_dd: "2026-10-13T00:00:00.000", large_traders: "11", commercial_hedgers: "-12", small_traders: "1", open_interest: "100" };
   let rows: unknown[] = [base, { ...base, large_traders: "99" }];
   t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify(rows)));
   await assert.rejects(officialHistories("futures", "2026-10-13", [{ name: "TEST", code: "1" }]), /Conflicting/);
@@ -74,6 +84,11 @@ test("Ambiguous official current market lists cannot initialize a scan", async t
     ? [{ report_date_as_yyyy_mm_dd: "2026-10-13T00:00:00.000" }]
     : [{ market_and_exchange_names: "DUPLICATE", cftc_contract_market_code: "1" }, { market_and_exchange_names: "DUPLICATE", cftc_contract_market_code: "2" }])));
   await assert.rejects(officialMarkets("combined"), /ambiguous/);
+  call = 0;
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify(++call === 1
+    ? [{ report_date_as_yyyy_mm_dd: "2026-10-13T00:00:00.000" }]
+    : [{ market_and_exchange_names: "ONE", cftc_contract_market_code: "1" }, { market_and_exchange_names: "TWO", cftc_contract_market_code: "1" }])));
+  await assert.rejects(officialMarkets("combined"), /ambiguous/, "a shared code would merge two markets' histories");
 });
 
 test("Actual D1 runtime: leases, resumable staging, atomic snapshots, API parity and cooldown", async t => {
