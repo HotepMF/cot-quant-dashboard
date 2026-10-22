@@ -75,7 +75,7 @@ export function HowItWorksPage() {
             <li>One area led in every test: the AND gate with OI-normalized Z over 16 weeks. Used as a filter for weekly bar-pattern entries (2-2, 3-2, failed 2, 3), it averaged +0.14R per trade with a 2σ target in both 2002–2013 and 2014–2026, before costs, over about 450 trades.</li>
             <li>Longer lookbacks (32, 48, 64) did not show it, and keeping the filter open after the signal ended diluted it.</li>
           </ul>
-          <p>That makes it our <b>best-tested setting, labeled Speculation</b>: it was found by searching, so it is not validated. It will be forward-tested in a public demo account (coming soon), with frozen rules and every loss shown. Positioning still does not time moves by itself; read setups as context, not instructions.</p>
+          <p>That makes it our <b>best-tested setting, labeled Speculation</b>: it was found by searching, so it is not validated. It is being forward-tested in a public demo account on <Link href="/invisible-hand">The Invisible Hand</Link>, with frozen rules and every loss shown. Positioning still does not time moves by itself; read setups as context, not instructions.</p>
         </Section>
 
         <Section id="markets" title="Which markets">
@@ -108,6 +108,7 @@ export function HowItWorksPage() {
             <li><b>Next two weeks</b>: FOMC decisions, CPI and payrolls (from the Federal Reserve and BLS schedules) and expirations (from exchange rules), each with what our tests found. FOMC and payrolls days have run about 20% wider than other days in the same volatility state. CPI days, options expirations, quarterly "witching" and the ES/NQ roll showed no reliable change in the day's range.</li>
             <li><b>Crowded watch</b>: core markets where large speculators sit in the top or bottom 10% of their 3-year range. Crowded readings were not followed by bigger moves in our tests, so treat this as where risk sits, not a timing signal.</li>
             <li><b>Event tags</b>: market rows here and on the SPDR sectors page carry a solid tag for scheduled events in the next 7 days and an outlined "in data" tag for events that fell inside the week the latest CFTC report covers, so a position change can be read next to the release that happened that week.</li>
+            <li><b>Demo account</b>: a public paper-trading forward test of the default model. The COT filter decides the side, weekly bar patterns (2-2, 3-2, failed 2, 3) trigger entries, one full-size contract per trade, stop trailed to every week that closes our way, target 2σ. The rules are frozen, results are before commissions and slippage, and every trade stays on the record. Each week's orders are placed after the Friday close for the following week, so no order can use prices from before it was published.</li>
             <li><b>Timing</b>: positioning updates minutes after each Friday CFTC release; prices and yields after each close.</li>
             <li><b>Our read</b> (coming soon): a short weekly read. Every statement will be labeled Validated (backed by our tested data) or Speculation (our judgment, with the reasoning shown).</li>
           </ul>
@@ -119,7 +120,7 @@ export function HowItWorksPage() {
             <li><b>COT positioning</b>: weekly. Positions as of Tuesday are published Friday at 3:30 p.m. ET, and the site checks for the release automatically.</li>
             <li><b>Sector and futures prices</b>: end of day, updated on weekday evenings after the U.S. close. During the trading day the page shows the previous close. The page header shows both dates, for example "Prices Oct 21 close · CFTC Oct 13".</li>
             <li><b>If prices stop updating</b>, the page shows a warning with the last update date instead of quietly showing old numbers.</li>
-            <li><b>The Invisible Hand</b>: positioning minutes after each Friday CFTC release; prices, volatility and yields after each weekday close.</li>
+            <li><b>The Invisible Hand</b>: positioning minutes after each Friday CFTC release; prices, volatility and yields after each weekday close. The demo account advances once a week, after the Friday close.</li>
             <li><b>Sources</b>: CFTC Commitments of Traders (Legacy, Disaggregated and Traders in Financial Futures); end-of-day prices from Yahoo Finance; Treasury yields from the U.S. Treasury's daily par yield curve.</li>
           </ul>
         </Section>
