@@ -68,3 +68,24 @@ test("query validation preserves booleans and rejects malformed settings", () =>
     assert.throws(() => parseSignalSettings(input));
   }
 });
+
+test("OI normalization matches the indicator: Z of net / open interest, only with a full window of valid OI", async () => {
+  const { computeRows, defaultSignalSettings, parseSignalSettings, previousDefaultSignalSettings } = await import("@workspace/cot-engine");
+  const rows = Array.from({ length: 40 }, (_, i) => ({ date: `2026-${String(1 + (i % 12)).padStart(2, "0")}-01`, large_traders: 0, small_traders: 0,
+    commercial_hedgers: 1000 + 37 * ((i * 7) % 11), open_interest: 20000 + 900 * ((i * 5) % 9) }));
+  const L = 16, s = { ...defaultSignalSettings, lookback: L };
+  const last = computeRows(rows, s).at(-1)!;
+  const norm = rows.slice(-L).map(r => r.commercial_hedgers / r.open_interest);
+  const mean = norm.reduce((a, b) => a + b, 0) / L;
+  const sd = Math.sqrt(norm.reduce((a, b) => a + (b - mean) ** 2, 0) / L);
+  assert.ok(Math.abs(last.chZ! - (norm[L - 1] - mean) / sd) < 1e-9, "population stdev of the normalised series, as ta.stdev");
+  const std = computeRows(rows, { ...s, zMethod: "Standard Z-Score" }).at(-1)!;
+  assert.notEqual(std.chZ, last.chZ, "the two methods differ");
+  const gap = rows.map((r, i) => i === 35 ? { ...r, open_interest: undefined } : r);
+  assert.equal(computeRows(gap, s).at(-1)!.chZ, null, "a missing OI inside the window leaves no Z (no bridging)");
+  assert.equal(computeRows(gap, { ...s, zMethod: "Standard Z-Score" }).at(-1)!.chZ, std.chZ, "standard Z ignores OI");
+  assert.deepEqual([defaultSignalSettings.signalMode, defaultSignalSettings.zMethod, defaultSignalSettings.lookback], ["Both (AND gate)", "Open Interest Normalization", 16]);
+  assert.equal(previousDefaultSignalSettings.lookback, 63);
+  assert.equal(parseSignalSettings({ zMethod: "Standard Z-Score" }).zMethod, "Standard Z-Score");
+  assert.throws(() => parseSignalSettings({ zMethod: "Winsorized" }), /Invalid zMethod/);
+});

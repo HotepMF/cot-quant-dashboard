@@ -20,6 +20,7 @@ export function parseSignalSettings(query: Record<string, unknown>): SignalSetti
   for (const [key, allowed] of [
     ["participant", ["Large Traders", "Small Traders", "Commercial Hedgers"]],
     ["signalMode", ["Z-Score Only", "COT Confluence", "Both (AND gate)"]],
+    ["zMethod", ["Standard Z-Score", "Open Interest Normalization"]],
   ] as const) {
     if (query[key] === undefined) continue;
     if (typeof query[key] !== "string" || !(allowed as readonly string[]).includes(query[key])) throw new Error(`Invalid ${key}.`);

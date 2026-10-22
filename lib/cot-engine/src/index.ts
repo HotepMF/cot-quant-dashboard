@@ -10,11 +10,22 @@ export type CalcRow = RawRow & {
 export type SignalSettings = {
   lookback: number; zThreshold: number; zEnabled: boolean; confluenceThreshold: number;
   requireSmall: boolean; changeEnabled: boolean; oiThreshold: number; participant: string; signalMode: string;
+  /** "Standard Z-Score" (raw net) or "Open Interest Normalization" (net / that week's open interest), as in the indicator. */
+  zMethod: string;
 };
+export const Z_METHODS = ["Standard Z-Score", "Open Interest Normalization"] as const;
+/**
+ * Site defaults (Oct 2026): the AND gate on commercials with OI-normalised Z over 16 weeks led every test we ran
+ * (backtest/indicator_grid_findings.md). It is not validated; it is being forward-tested in the demo account.
+ */
 export const defaultSignalSettings: SignalSettings = {
-  lookback: 63, zThreshold: 2, zEnabled: true, confluenceThreshold: 65,
+  lookback: 16, zThreshold: 2, zEnabled: true, confluenceThreshold: 65,
   requireSmall: false, changeEnabled: true, oiThreshold: 25,
-  participant: "Commercial Hedgers", signalMode: "COT Confluence",
+  participant: "Commercial Hedgers", signalMode: "Both (AND gate)", zMethod: "Open Interest Normalization",
+};
+/** The site's defaults before Oct 2026, kept so visitors can switch back. */
+export const previousDefaultSignalSettings: SignalSettings = {
+  ...defaultSignalSettings, lookback: 63, signalMode: "COT Confluence", zMethod: "Standard Z-Score",
 };
 const metricKeys = ["large_traders", "small_traders", "commercial_hedgers"] as const;
 type MetricKey = typeof metricKeys[number];
@@ -38,15 +49,20 @@ function cycleRanks(values: number[]) {
 export function computeRows(raw: RawRow[], settings: SignalSettings, latestOnly = false): CalcRow[] {
   const vals = (k: MetricKey) => raw.map(r => r[k]);
   const allVals = { large_traders: vals("large_traders"), small_traders: vals("small_traders"), commercial_hedgers: vals("commercial_hedgers") };
+  // Z-score input: raw net, or net / that week's open interest (missing OI leaves the window incomplete -> no Z).
+  const oiNorm = settings.zMethod === "Open Interest Normalization";
+  const zVals = oiNorm
+    ? Object.fromEntries(metricKeys.map(k => [k, raw.map(r => r.open_interest != null && r.open_interest > 0 ? r[k] / r.open_interest : Number.NaN)])) as Record<MetricKey, number[]>
+    : allVals;
   const deltas = Object.fromEntries(metricKeys.map(k => [k, allVals[k].map((v, i) => i ? v - allVals[k][i - 1] : Number.NaN)])) as Record<MetricKey, number[]>;
   const cycleSeries = { large_traders: cycleRanks(allVals.large_traders), small_traders: cycleRanks(allVals.small_traders), commercial_hedgers: cycleRanks(allVals.commercial_hedgers) };
   return (latestOnly ? raw.slice(-1) : raw).map((r, index) => {
     const i = latestOnly ? raw.length - 1 : index;
     const selectedKey: MetricKey = settings.participant === "Large Traders" ? "large_traders" : settings.participant === "Small Traders" ? "small_traders" : "commercial_hedgers";
     const z = {
-      large_traders: zScore(allVals.large_traders.slice(0, i + 1), settings.lookback),
-      small_traders: zScore(allVals.small_traders.slice(0, i + 1), settings.lookback),
-      commercial_hedgers: zScore(allVals.commercial_hedgers.slice(0, i + 1), settings.lookback),
+      large_traders: zScore(zVals.large_traders.slice(0, i + 1), settings.lookback),
+      small_traders: zScore(zVals.small_traders.slice(0, i + 1), settings.lookback),
+      commercial_hedgers: zScore(zVals.commercial_hedgers.slice(0, i + 1), settings.lookback),
     };
     const dz = Object.fromEntries(metricKeys.map(k => [k, zScore(deltas[k].slice(0, i + 1), settings.lookback)])) as Record<MetricKey, number | null>;
     const dp = Object.fromEntries(metricKeys.map(k => {

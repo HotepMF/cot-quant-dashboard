@@ -11,6 +11,7 @@ import { Route, Switch } from "wouter";
 import { CONSOLIDATED_COMPONENTS, computeRows } from "@workspace/cot-engine";
 import type { RawRow } from "@workspace/cot-engine";
 import { useSharedSettings, STORAGE_SOURCE_MODE } from "@/lib/settings-store";
+import { ModelNotice } from "@/components/model-notice";
 import type { Settings } from "@/lib/settings-store";
 import { SectorSignalsPage } from "@/pages/sector-signals";
 import { SignalWatchlistPage } from "@/pages/signal-watchlist";
@@ -573,6 +574,7 @@ function Dashboard() {
 
       <section id="configuration" className="section">
         <div style={{ marginBottom: 13 }}><div className="eyebrow">Controls &amp; local data</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Configuration</h2></div>
+        <ModelNotice />
         <div className="setting-grid">
           <div className="card"><div className="card-head"><div><h3 className="panel-title">Core settings</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Market context and signal selection</div></div></div>
             <div className="card-body" style={{ display: "grid", gap: 14 }}>
@@ -588,6 +590,7 @@ function Dashboard() {
           <div className="card"><div className="card-head"><div><h3 className="panel-title">Calculation thresholds</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Rolling window and cycle extremes</div></div></div>
             <div className="card-body" style={{ display: "grid", gap: 14 }}>
               <div className="field"><label htmlFor="lookback">Lookback period · weeks</label><input id="lookback" className="input mono" type="number" min="3" max="500" value={settings.lookback} onChange={e => setSetting("lookback", Math.max(3, Math.min(500, Number(e.target.value) || 3)))} data-testid="input-lookback" /></div>
+              <div className="field"><label htmlFor="z-method">Z-score calculation</label><select id="z-method" className="select" value={settings.zMethod} onChange={e => setSetting("zMethod", e.target.value)} data-testid="select-z-method"><option>Standard Z-Score</option><option>Open Interest Normalization</option></select></div>
               <div className="field"><label htmlFor="z-threshold">Z-score threshold · standard deviations</label><input id="z-threshold" className="input mono" type="number" min="0" max="20" step=".1" value={settings.zThreshold} onChange={e => setSetting("zThreshold", Math.max(0, Math.min(20, Number(e.target.value) || 0)))} data-testid="input-z-threshold" /></div>
               <div className="field"><label htmlFor="conf-threshold">Confluence cycle threshold · %</label><input id="conf-threshold" className="input mono" type="number" min="50" max="95" step="5" value={settings.confluenceThreshold} onChange={e => setSetting("confluenceThreshold", Math.max(50, Math.min(95, Number(e.target.value) || 50)))} data-testid="input-confluence-threshold" /></div>
               <div className="field"><label htmlFor="oi-threshold">Open interest move threshold · %</label><input id="oi-threshold" className="input mono" type="number" min="1" max="100" value={settings.oiThreshold} onChange={e => setSetting("oiThreshold", Math.max(1, Math.min(100, Number(e.target.value) || 1)))} data-testid="input-oi-threshold" /></div>

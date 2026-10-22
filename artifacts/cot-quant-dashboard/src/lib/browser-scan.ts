@@ -36,7 +36,10 @@ export async function loadScreener(params: GetCotScreenerParams, signal: AbortSi
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.message ?? "The prepared CFTC scan is unavailable.");
   const data = payload as CotScreenerResponse;
-  if (matchesDefaults(params)) return data;
+  // The prepared scan is used only when it was built with the current defaults (a deploy that changes them leaves the
+  // old scan in place until the next collection; the browser worker covers that gap).
+  const preparedIsCurrent = Object.entries(defaultSignalSettings).every(([k, v]) => (data.settings as unknown as Record<string, unknown> | undefined)?.[k] === v);
+  if (matchesDefaults(params) && preparedIsCurrent) return data;
   // The Node/Replit preview retains its existing API contract and server calculation.
   const snapshot = response.headers.get("X-COT-Snapshot");
   if (!snapshot) return getCotScreener(params, { signal });

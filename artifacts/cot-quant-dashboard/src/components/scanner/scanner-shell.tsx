@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, ChevronDown, Clock3, Info, Moon, RefreshCw, Sun } from "lucide-react";
 import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
+import { ModelNotice } from "@/components/model-notice";
 import { STORAGE_THEME, useSharedSettings } from "@/lib/settings-store";
 import type { Settings } from "@/lib/settings-store";
 import type { useScreener } from "@/hooks/use-screener";
@@ -99,14 +100,16 @@ function SharedSettingsPanel() {
     <button className="scan-settings-head" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid="button-toggle-settings">
       <span className="eyebrow">Shared rule set</span>
       <span className="scan-rule-chips">
-        <b>{settings.signalMode}</b><i>{settings.participant}</i><i>{settings.lookback}w</i><i>Z {settings.zEnabled ? `≥ ${settings.zThreshold}σ` : "off"}</i><i>cycle {settings.confluenceThreshold}%</i>{settings.requireSmall && <i>small confirm</i>}
+        <b>{settings.signalMode}</b><i>{settings.participant}</i><i>{settings.lookback}w</i><i>{settings.zMethod === "Open Interest Normalization" ? "OI-norm Z" : "std Z"}</i><i>Z {settings.zEnabled ? `≥ ${settings.zThreshold}σ` : "off"}</i><i>cycle {settings.confluenceThreshold}%</i>{settings.requireSmall && <i>small confirm</i>}
       </span>
       <ChevronDown size={15} className={open ? "rot" : ""} />
     </button>
     {open && <div className="scan-settings-body">
+      <div style={{ gridColumn: "1 / -1" }}><ModelNotice /></div>
       <div className="field"><label htmlFor="s-mode">Signal mode</label><select id="s-mode" className="select" value={settings.signalMode} onChange={e => set("signalMode", e.target.value)} data-testid="select-scan-mode"><option>Z-Score Only</option><option>COT Confluence</option><option>Both (AND gate)</option></select></div>
       <div className="field"><label htmlFor="s-part">Participant</label><select id="s-part" className="select" value={settings.participant} onChange={e => set("participant", e.target.value)} data-testid="select-scan-participant"><option>Large Traders</option><option>Small Traders</option><option>Commercial Hedgers</option></select></div>
       <div className="field"><label htmlFor="s-lb">Lookback · weeks</label><input id="s-lb" className="input mono" type="number" min="3" max="500" value={settings.lookback} onChange={e => set("lookback", Math.max(3, Math.min(500, Number(e.target.value) || 3)))} data-testid="input-scan-lookback" /></div>
+      <div className="field"><label htmlFor="s-zm">Z calculation</label><select id="s-zm" className="select" value={settings.zMethod} onChange={e => set("zMethod", e.target.value)} data-testid="select-scan-z-method"><option>Standard Z-Score</option><option>Open Interest Normalization</option></select></div>
       <div className="field"><label htmlFor="s-z">Z threshold · σ</label><input id="s-z" className="input mono" type="number" min="0" max="20" step=".1" value={settings.zThreshold} onChange={e => set("zThreshold", Math.max(0, Math.min(20, Number(e.target.value) || 0)))} data-testid="input-scan-z" /></div>
       <div className="field"><label htmlFor="s-c">Confluence cycle · %</label><input id="s-c" className="input mono" type="number" min="50" max="95" step="5" value={settings.confluenceThreshold} onChange={e => set("confluenceThreshold", Math.max(50, Math.min(95, Number(e.target.value) || 50)))} data-testid="input-scan-confluence" /></div>
       <div className="field"><label htmlFor="s-oi">OI move threshold · %</label><input id="s-oi" className="input mono" type="number" min="1" max="100" value={settings.oiThreshold} onChange={e => set("oiThreshold", Math.max(1, Math.min(100, Number(e.target.value) || 1)))} data-testid="input-scan-oi" /></div>
