@@ -1,0 +1,29 @@
+name: Update sectors snapshot
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sectors-snapshot
+  cancel-in-progress: false
+jobs:
+  sectors:
+    # Dispatched by the Cloudflare Worker on weekdays after the close; can also be run by hand.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: pnpm install --frozen-lockfile
+      - name: Build and store the daily sectors snapshot
+        run: pnpm --filter @workspace/api-server exec tsx cloudflare/sectors-cli.ts
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_D1_TOKEN: ${{ secrets.CLOUDFLARE_D1_TOKEN }}
+          CFTC_APP_TOKEN: ${{ secrets.CFTC_APP_TOKEN }}
+          SECTORS_PRICE_SOURCE: ${{ vars.SECTORS_PRICE_SOURCE || 'yahoo' }}
