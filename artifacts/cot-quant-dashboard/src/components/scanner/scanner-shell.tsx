@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, ChevronDown, Clock3, Info, Moon, RefreshCw, Sun } from "lucide-react";
+import { AlertTriangle, Clock3, Info, Moon, RefreshCw, Sun } from "lucide-react";
 import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
-import { ModelNotice } from "@/components/model-notice";
-import { STORAGE_THEME, useSharedSettings } from "@/lib/settings-store";
-import type { Settings } from "@/lib/settings-store";
+import { SettingsBar } from "@/components/settings-bar";
+import { STORAGE_THEME } from "@/lib/settings-store";
 import type { useScreener } from "@/hooks/use-screener";
 import { shortDate } from "@/hooks/use-screener";
 import { CftcUpdateStatus } from "@/components/cftc-update-status";
@@ -53,7 +52,7 @@ export function ScannerShell({ eyebrow, title, lede, screener, children }: { eye
         </div>
       </header>
       <ScanStatus screener={screener} />
-      <SharedSettingsPanel />
+      <SettingsBar />
       {children}
       <footer className="scan-foot">
         <span>COT Quant · all-market scan of the official CFTC Legacy report</span>
@@ -81,8 +80,8 @@ function ScanStatus({ screener }: { screener: Screener }) {
         {err
           ? (screener.refreshError instanceof Error ? screener.refreshError.message : data?.message ?? (query.error instanceof Error ? query.error.message : "The screener request failed.")) + (data?.markets.length ? " Previously returned rows remain visible with their original dates." : "")
           : scanning
-            ? `${processed.toLocaleString()} of ${total ? total.toLocaleString() : "…"} markets processed. Markets not yet processed are marked queued, not counted as no-signal.`
-            : data ? `${eligible.toLocaleString()} of ${data.total.toLocaleString()} markets have current, sufficient history for this rule set. ${data.total - eligible} unavailable. ${data.message ?? ""}` : "Requesting the official market list…"}
+            ? `${processed.toLocaleString()} of ${total ? total.toLocaleString() : "…"} core markets processed. Markets not yet processed are marked queued, not counted as no-signal.`
+            : data ? `${eligible.toLocaleString()} of ${data.total.toLocaleString()} core markets have current, sufficient history for this rule set${data.total - eligible ? `; ${data.total - eligible} unavailable` : ""}. ${data.message ?? ""}` : "Requesting the official market list…"}
       </span>
       {scanning && <div className="scan-progress" aria-label={`Scan progress ${pct}%`}><span style={{ transform: `scaleX(${pct / 100})` }} /></div>}
       <small><Clock3 size={12} /> report as of {shortDate(data?.reportAsOf)}{lastChecked ? ` · last checked ${new Date(lastChecked).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" })} ET` : ""}</small>
@@ -90,37 +89,6 @@ function ScanStatus({ screener }: { screener: Screener }) {
     </div>
     {err && <button className="btn source-action" onClick={() => { if (data?.status === "error" || screener.refreshError) screener.refresh(); else void query.refetch(); }} data-testid="button-retry-scan">Retry</button>}
   </div>;
-}
-
-function SharedSettingsPanel() {
-  const [settings, setSettings] = useSharedSettings();
-  const [open, setOpen] = useState(false);
-  const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setSettings(s => ({ ...s, [k]: v }));
-  return <section className="card scan-settings print-hidden">
-    <button className="scan-settings-head" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid="button-toggle-settings">
-      <span className="eyebrow">Shared rule set</span>
-      <span className="scan-rule-chips">
-        <b>{settings.signalMode}</b><i>{settings.participant}</i><i>{settings.lookback}w</i><i>{settings.zMethod === "Open Interest Normalization" ? "OI-norm Z" : "std Z"}</i><i>Z {settings.zEnabled ? `≥ ${settings.zThreshold}σ` : "off"}</i><i>cycle {settings.confluenceThreshold}%</i>{settings.requireSmall && <i>small confirm</i>}
-      </span>
-      <ChevronDown size={15} className={open ? "rot" : ""} />
-    </button>
-    {open && <div className="scan-settings-body">
-      <div style={{ gridColumn: "1 / -1" }}><ModelNotice /></div>
-      <div className="field"><label htmlFor="s-mode">Signal mode</label><select id="s-mode" className="select" value={settings.signalMode} onChange={e => set("signalMode", e.target.value)} data-testid="select-scan-mode"><option>Z-Score Only</option><option>COT Confluence</option><option>Both (AND gate)</option></select></div>
-      <div className="field"><label htmlFor="s-part">Participant</label><select id="s-part" className="select" value={settings.participant} onChange={e => set("participant", e.target.value)} data-testid="select-scan-participant"><option>Large Traders</option><option>Small Traders</option><option>Commercial Hedgers</option></select></div>
-      <div className="field"><label htmlFor="s-lb">Lookback · weeks</label><input id="s-lb" className="input mono" type="number" min="3" max="500" value={settings.lookback} onChange={e => set("lookback", Math.max(3, Math.min(500, Number(e.target.value) || 3)))} data-testid="input-scan-lookback" /></div>
-      <div className="field"><label htmlFor="s-zm">Z calculation</label><select id="s-zm" className="select" value={settings.zMethod} onChange={e => set("zMethod", e.target.value)} data-testid="select-scan-z-method"><option>Standard Z-Score</option><option>Open Interest Normalization</option></select></div>
-      <div className="field"><label htmlFor="s-z">Z threshold · σ</label><input id="s-z" className="input mono" type="number" min="0" max="20" step=".1" value={settings.zThreshold} onChange={e => set("zThreshold", Math.max(0, Math.min(20, Number(e.target.value) || 0)))} data-testid="input-scan-z" /></div>
-      <div className="field"><label htmlFor="s-c">Confluence cycle · %</label><input id="s-c" className="input mono" type="number" min="50" max="95" step="5" value={settings.confluenceThreshold} onChange={e => set("confluenceThreshold", Math.max(50, Math.min(95, Number(e.target.value) || 50)))} data-testid="input-scan-confluence" /></div>
-      <div className="field"><label htmlFor="s-oi">OI move threshold · %</label><input id="s-oi" className="input mono" type="number" min="1" max="100" value={settings.oiThreshold} onChange={e => set("oiThreshold", Math.max(1, Math.min(100, Number(e.target.value) || 1)))} data-testid="input-scan-oi" /></div>
-      <div className="scan-switches">
-        <label className="switch-row"><span>Z-score detection</span><input className="switch" type="checkbox" checked={settings.zEnabled} onChange={e => set("zEnabled", e.target.checked)} data-testid="toggle-scan-z" /></label>
-        <label className="switch-row"><span>Require small trader confirmation</span><input className="switch" type="checkbox" checked={settings.requireSmall} onChange={e => set("requireSmall", e.target.checked)} data-testid="toggle-scan-small" /></label>
-        <label className="switch-row"><span>Large position change flag</span><input className="switch" type="checkbox" checked={settings.changeEnabled} onChange={e => set("changeEnabled", e.target.checked)} data-testid="toggle-scan-change" /></label>
-      </div>
-      <div className="notice scan-settings-note">These are the same settings the market detail page uses. Changing them here re-runs the scan and updates the detail view.</div>
-    </div>}
-  </section>;
 }
 
 export function ScoreExplainer() {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   Area, AreaChart, CartesianGrid, Legend, Line, LineChart, ReferenceArea, ReferenceLine,
@@ -11,7 +11,8 @@ import { Route, Switch } from "wouter";
 import { CONSOLIDATED_COMPONENTS, computeRows } from "@workspace/cot-engine";
 import type { RawRow } from "@workspace/cot-engine";
 import { useSharedSettings, STORAGE_SOURCE_MODE } from "@/lib/settings-store";
-import { ModelNotice } from "@/components/model-notice";
+import { SettingsBar } from "@/components/settings-bar";
+import { Link } from "wouter";
 import type { Settings } from "@/lib/settings-store";
 import { SectorSignalsPage } from "@/pages/sector-signals";
 import { SignalWatchlistPage } from "@/pages/signal-watchlist";
@@ -21,8 +22,8 @@ import { InvisibleHandPage } from "@/pages/invisible-hand";
 import { SiteBrand, SiteMobileNav, SiteNav, workspaceSections } from "@/components/site-nav";
 import NotFound from "@/pages/not-found";
 import {
-  Activity, Download, FileUp, Moon, Printer, RefreshCw,
-  Sun, Upload, Database, AlertTriangle, Clock3,
+  Activity, Download, Moon, Printer, RefreshCw,
+  Sun, Database, AlertTriangle, Clock3,
 } from "lucide-react";
 import {
   getGetCotMarketHistoryQueryKey, getGetCotMarketsQueryKey,
@@ -53,6 +54,7 @@ function makeDemo(): RawRow[] {
   });
 }
 const DEMO_ROWS = makeDemo();
+/** Browser CSV imports were retired in Oct 2026; leftover rows are cleared on load. */
 const STORAGE_DATA = "cot-quant-local-rows-v1";
 const STORAGE_THEME = "cot-quant-theme-v2";
 const STORAGE_SOURCE = "cot-quant-source-selection-v1";
@@ -85,96 +87,8 @@ const makeCsv = (rows: Record<string, unknown>[], fileName: string) => {
   const link = document.createElement("a");
   link.href = url; link.download = fileName; link.click(); URL.revokeObjectURL(url);
 };
-function normalizeHeader(s: string) { return s.toLowerCase().replace(/[^a-z0-9]/g, ""); }
-const aliases: Record<string, string[]> = {
-  date: ["date", "reportdate", "weeklydate", "asofdate", "reportdateasyyyymmdd", "reportdateasmmddyyyy"],
-  large_traders: ["largetraders", "noncommercial", "netnoncommercial", "noncommercialnet", "noncommnet"],
-  small_traders: ["smalltraders", "nonreportable", "netnonreportable", "nonreportablenet", "nonreptnet"],
-  commercial_hedgers: ["commercialhedgers", "commercial", "netcommercial", "commercialnet", "commnet"],
-  open_interest: ["openinterest"],
-};
-function normalizeDate(raw: string) {
-  const value = raw.trim();
-  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-  const compact = value.match(/^(\d{4})(\d{2})(\d{2})$/);
-  if (compact) return `${compact[1]}-${compact[2]}-${compact[3]}`;
-  const us = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (us) return `${us[3]}-${us[1].padStart(2, "0")}-${us[2].padStart(2, "0")}`;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "";
-  return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
-}
-function normalizeCSV(text: string): { rows: RawRow[]; raw: Record<string, unknown>[] } {
-  const parsed = Papa.parse<Record<string, unknown>>(text, { header: true, dynamicTyping: false, skipEmptyLines: true });
-  if (parsed.errors.length) throw new Error(`CSV could not be read: ${parsed.errors[0].message}. Check delimiter, quoting, and the header row.`);
-  const raw = parsed.data;
-  if (!raw.length) throw new Error("No data rows found. Add weekly rows below the header.");
-  if (raw.length > 10000) throw new Error("This CSV has more than 10,000 rows. Split it into smaller histories before importing.");
-  const fields = Object.keys(raw[0] ?? {});
-  const map: Record<string, string | undefined> = {};
-  Object.entries(aliases).forEach(([key, names]) => { map[key] = fields.find(f => names.includes(normalizeHeader(f))); });
-  map.open_interest = fields.find((field) => normalizeHeader(field).includes("openinterest"));
-  const findPositionPair = (group: MetricKey) => {
-    const matches = fields.filter((field) => {
-      const name = normalizeHeader(field);
-      if (!name.includes("position") || (!name.includes("long") && !name.includes("short"))) return false;
-      if (group === "large_traders") return name.includes("noncomm");
-      if (group === "small_traders") return name.includes("nonreportable") || name.includes("nonrept") || name.includes("nonreporting");
-      return (name.includes("commercial") || name.startsWith("comm")) && !name.includes("noncomm");
-    });
-    const aggregateFields = matches.filter((field) => normalizeHeader(field).includes("all"));
-    const selectedFields = aggregateFields.length
-      ? aggregateFields
-      : matches.filter((field) => !/old|other|spreading/.test(normalizeHeader(field)));
-    return {
-      long: selectedFields.find((field) => normalizeHeader(field).includes("long")),
-      short: selectedFields.find((field) => normalizeHeader(field).includes("short")),
-    };
-  };
-  const positionPairs = Object.fromEntries(metricKeys.map((key) => [key, findPositionPair(key)])) as Record<MetricKey, { long?: string; short?: string }>;
-  const required = ["date", ...metricKeys];
-  const missing = required.filter((key) => !map[key] && (key === "date" || !positionPairs[key as MetricKey].long || !positionPairs[key as MetricKey].short));
-  if (missing.length) throw new Error(`Missing required columns: ${missing.join(", ")}. Include net long-minus-short fields, or CFTC long and short position columns for each participant.`);
-  const usable: RawRow[] = [];
-  let invalid = 0;
-  const numeric = (record: Record<string, unknown>, field?: string): number | null => {
-    if (!field) return null;
-    const value = String(record[field] ?? "").trim().replace(/,/g, "");
-    if (!value) return null;
-    const parsedValue = Number(value);
-    return Number.isFinite(parsedValue) ? parsedValue : null;
-  };
-  raw.forEach((record, i) => {
-    const dateRaw = String(record[map.date!] ?? "").trim();
-    const date = normalizeDate(dateRaw);
-    const position = (key: MetricKey) => {
-      const direct = numeric(record, map[key]);
-      if (direct != null) return direct;
-      const pair = positionPairs[key];
-      const long = numeric(record, pair.long), short = numeric(record, pair.short);
-      return long != null && short != null ? long - short : null;
-    };
-    const large = position("large_traders"), small = position("small_traders"), commercial = position("commercial_hedgers");
-    if (!date || large == null || small == null || commercial == null) { invalid++; return; }
-    const oi = numeric(record, map.open_interest);
-    usable.push({ date, large_traders: large, small_traders: small, commercial_hedgers: commercial, ...(oi != null ? { open_interest: oi } : {}) });
-  });
-  usable.sort((a, b) => a.date.localeCompare(b.date));
-  const duplicate = usable.find((row, index) => index > 0 && row.date === usable[index - 1]?.date);
-  if (duplicate) throw new Error(`Duplicate report date found: ${duplicate.date}. Remove duplicate weekly rows and import again.`);
-  if (usable.length < 3) throw new Error(`Only ${usable.length} usable rows found. At least 3 chronologically ordered weekly rows are required; ${invalid} row(s) were skipped for invalid date or numeric values.`);
-  if (invalid) throw new Error(`${invalid} row(s) could not be used. Fix blank/invalid dates or participant values, then import again. At least 3 usable rows are required.`);
-  return { rows: usable, raw };
-}
-
 function Dashboard() {
   useEffect(() => { document.title = "COT Quant Dashboard"; }, []);
-  const [rows, setRows] = useState<RawRow[]>(() => {
-    try { const v = localStorage.getItem(STORAGE_DATA); if (v) return JSON.parse(v).rows as RawRow[]; } catch { /* keep sample data */ }
-    return DEMO_ROWS;
-  });
-  const [isImported, setIsImported] = useState(() => { try { return !!localStorage.getItem(STORAGE_DATA) && localStorage.getItem(STORAGE_SOURCE_MODE) !== "live"; } catch { return false; } });
   const [settings, setSettings] = useSharedSettings();
   const [isDark, setIsDark] = useState(() => { try { return localStorage.getItem(STORAGE_THEME) !== "light"; } catch { return true; } });
   const [liveReport, setLiveReport] = useState<"futures" | "combined">(() => {
@@ -186,15 +100,12 @@ function Dashboard() {
   });
   const [activeSection, setActiveSection] = useState("summary");
   const [chartWeeks, setChartWeeks] = useState(26);
-  const [uploadError, setUploadError] = useState("");
-  const [uploadMessage, setUploadMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMark, setRefreshMark] = useState("");
   const [tablePage, setTablePage] = useState(0);
-  const fileRef = useRef<HTMLInputElement>(null);
   const marketsQuery = useGetCotMarkets(
     { report: liveReport },
-    { query: { queryKey: getGetCotMarketsQueryKey({ report: liveReport }), enabled: !isImported, refetchOnMount: "always", refetchInterval: releaseWindowActive ? 60_000 : 5 * 60_000 } },
+    { query: { queryKey: getGetCotMarketsQueryKey({ report: liveReport }), refetchOnMount: "always", refetchInterval: releaseWindowActive ? 60_000 : 5 * 60_000 } },
   );
   const marketList = marketsQuery.data?.markets ?? [];
   const preferredMarket = marketList.find(m => m.code === "13874+") ?? marketList.find(m => /E-MINI S&P 500/i.test(m.name));
@@ -204,14 +115,13 @@ function Dashboard() {
     {
       query: {
         queryKey: getGetCotMarketHistoryQueryKey({ report: liveReport, market: effectiveMarket?.name ?? "" }),
-        enabled: Boolean(effectiveMarket) && !isImported,
+        enabled: Boolean(effectiveMarket),
         refetchOnMount: "always",
         refetchInterval: releaseWindowActive ? 60_000 : 5 * 60_000,
       },
     },
   );
   const analysisRows = useMemo<RawRow[]>(() => {
-    if (isImported) return rows;
     if (!historyQuery.data?.rows.length) return DEMO_ROWS;
     return historyQuery.data.rows.map(row => ({
       date: row.date,
@@ -220,7 +130,7 @@ function Dashboard() {
       commercial_hedgers: row.commercialHedgers,
       ...(row.openInterest != null ? { open_interest: row.openInterest } : {}),
     }));
-  }, [isImported, rows, historyQuery.data]);
+  }, [historyQuery.data]);
   const computed = useMemo(() => computeRows(analysisRows, settings), [analysisRows, settings]);
   const latest = computed[computed.length - 1];
   const previous = computed[computed.length - 2];
@@ -257,7 +167,7 @@ function Dashboard() {
       localStorage.setItem(`${STORAGE_SOURCE}:market`, selectedMarket);
     } catch { /* source preferences remain session-only */ }
   }, [liveReport, selectedMarket]);
-  useEffect(() => { setTablePage(0); }, [historyQuery.data, isImported]);
+  useEffect(() => { setTablePage(0); }, [historyQuery.data]);
   useEffect(() => {
     let wasInWindow = isCftcReleaseWindow();
     const timer = window.setInterval(() => {
@@ -265,13 +175,13 @@ function Dashboard() {
       setReleaseWindowActive(inWindow);
       if (inWindow && !wasInWindow) {
         void marketsQuery.refetch();
-        if (!isImported) void historyQuery.refetch();
+        void historyQuery.refetch();
       }
       wasInWindow = inWindow;
     }, 30_000);
     return () => window.clearInterval(timer);
-  }, [isImported, liveReport, effectiveMarket?.name]);
-  useEffect(() => { try { localStorage.setItem(STORAGE_SOURCE_MODE, isImported ? "csv" : "live"); } catch { /* storage unavailable */ } }, [isImported]);
+  }, [liveReport, effectiveMarket?.name]);
+  useEffect(() => { try { localStorage.removeItem(STORAGE_DATA); localStorage.setItem(STORAGE_SOURCE_MODE, "live"); } catch { /* storage unavailable */ } }, []);
   useEffect(() => {
     const observer = new IntersectionObserver(entries => {
       const visibleSection = entries.filter(e => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -297,40 +207,10 @@ function Dashboard() {
   }, []);
   function handleRefresh() {
     setRefreshing(true);
-    void Promise.all([marketsQuery.refetch(), !isImported ? historyQuery.refetch() : Promise.resolve(null)]).finally(() => {
+    void Promise.all([marketsQuery.refetch(), historyQuery.refetch()]).finally(() => {
       setRefreshMark(new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }));
       setRefreshing(false);
     });
-  }
-  function resetData() {
-    setIsImported(false); setUploadError(""); setUploadMessage("Switched back to the official CFTC data.");
-    try { localStorage.removeItem(STORAGE_DATA); } catch { /* storage unavailable */ }
-    if (fileRef.current) fileRef.current.value = "";
-    if (historyQuery.data?.rows.length) {
-      setRows(historyQuery.data.rows.map(row => ({
-        date: row.date, large_traders: row.largeTraders, small_traders: row.smallTraders,
-        commercial_hedgers: row.commercialHedgers, ...(row.openInterest != null ? { open_interest: row.openInterest } : {}),
-      })));
-    } else setRows(DEMO_ROWS);
-  }
-  function importFile(file?: File) {
-    setUploadError(""); setUploadMessage("");
-    if (!file) return;
-    if (file.size > 15 * 1024 * 1024) { setUploadError("This file exceeds 15 MB. Split the weekly history into smaller CSV files and retry."); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const source = String(reader.result ?? "");
-        const parsed = normalizeCSV(source);
-        setRows(parsed.rows); setIsImported(true); setTablePage(0);
-        let persisted = true;
-        try { localStorage.setItem(STORAGE_DATA, JSON.stringify({ rows: parsed.rows, raw: parsed.raw, sourceName: file.name, importedAt: new Date().toISOString() })); } catch { persisted = false; }
-        if (persisted) setUploadMessage(`${parsed.rows.length.toLocaleString()} weekly rows loaded from ${file.name}. Data remains in this browser.`);
-        else setUploadError("Import analyzed, but browser storage is unavailable. The data will not persist after reload.");
-      } catch (e) { setUploadError(e instanceof Error ? e.message : "Could not parse this file. Review the CSV format and try again."); }
-    };
-    reader.onerror = () => setUploadError("The browser could not read this file. Choose a local .csv file and retry.");
-    reader.readAsText(file);
   }
   const exportRows = (rowsToExport = computed) => rowsToExport.map(r => ({
     date: r.date, large_traders_net: r.large_traders, small_traders_net: r.small_traders,
@@ -366,12 +246,12 @@ function Dashboard() {
   const showSignalMark = Boolean(latest && ((settings.showSignals && (latest.buy || latest.sell)) || latest.largeMove));
   const signalMarkText = latest?.buy ? "BUY" : latest?.sell ? "SELL" : latest?.largeMove ? (latest.moveDirection === "Net positioning increased" ? "POSITION +" : "POSITION −") : "";
   const signalMarkColor = latest?.buy ? C.large : latest?.sell ? C.red : C.small;
-  const liveActive = !isImported && Boolean(historyQuery.data?.rows.length);
-  const liveFailure = !isImported && (marketsQuery.isError || historyQuery.isError);
+  const liveActive = Boolean(historyQuery.data?.rows.length);
+  const liveFailure = marketsQuery.isError || historyQuery.isError;
   const reportName = liveReport === "futures" ? "Legacy Futures Only" : "Legacy Combined";
   const checkTime = historyQuery.data?.checkedAt ?? marketsQuery.data?.checkedAt;
   const isReportStale = reportAgeDays(historyQuery.data?.reportAsOf) > 9;
-  const dataMarketLabel = isImported ? settings.marketLabel || "Local CSV dataset" : liveActive ? historyQuery.data!.marketName : "Illustrative sample · not market data";
+  const dataMarketLabel = liveActive ? historyQuery.data!.marketName : "Illustrative sample · not market data";
 
   return <div className="shell">
     <aside className="sidebar">
@@ -380,60 +260,57 @@ function Dashboard() {
       <div style={{ marginTop: "auto", borderTop: "1px solid hsl(var(--sidebar-border))", padding: "18px 8px 0" }}>
         <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)" }}>Data mode</div>
         <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
-          <span className="dot" style={{ background: isImported ? "#65c7a4" : liveActive ? "#65c7a4" : liveFailure ? "#e27667" : "#e6a752" }} />{isImported ? "Local CSV import" : liveActive ? "Official CFTC data" : liveFailure ? "CFTC connection issue" : "Connecting to CFTC"}
+          <span className="dot" style={{ background: liveActive ? "#65c7a4" : liveFailure ? "#e27667" : "#e6a752" }} />{liveActive ? "Official CFTC data" : liveFailure ? "CFTC connection issue" : "Connecting to CFTC"}
         </div>
-        <div style={{ color: "rgba(244,241,232,.45)", fontSize: 10, lineHeight: 1.55, marginTop: 8 }}>{isImported ? "CSV imports stay on this device." : "Official weekly CFTC reports · Tuesday positions, usually posted Friday."}</div>
+        <div style={{ color: "rgba(244,241,232,.45)", fontSize: 10, lineHeight: 1.55, marginTop: 8 }}>Official weekly CFTC reports · Tuesday positions, usually posted Friday.</div>
       </div>
     </aside>
 
     <main className="main">
       <header className="topline">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 9 }}>Positioning intelligence <span style={{ margin: "0 6px" }}>/</span> {isImported ? "Local CSV" : effectiveMarket?.name ?? "CFTC markets"}</div>
+          <div className="eyebrow" style={{ marginBottom: 9 }}>Positioning intelligence <span style={{ margin: "0 6px" }}>/</span> {effectiveMarket?.name ?? "CFTC markets"}</div>
           <h1 className="page-title display">COT Quant Dashboard</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 9, flexWrap: "wrap" }}>
-            <span className={`badge ${isImported ? "good" : liveFailure ? "bad" : liveActive && !isReportStale ? "good" : "warn"}`} data-testid="status-data-mode"><span className="dot" style={{ background: isImported ? "#69c8a7" : liveFailure ? "#e27667" : liveActive && !isReportStale ? "#69c8a7" : "#e6a752" }} />{isImported ? "Local CSV import" : liveFailure ? "CFTC request failed" : liveActive && isReportStale ? "CFTC report may be stale" : liveActive ? "Official CFTC data · weekly" : "Illustrative demo fallback"}</span>
+            <span className={`badge ${liveFailure ? "bad" : liveActive && !isReportStale ? "good" : "warn"}`} data-testid="status-data-mode"><span className="dot" style={{ background: liveFailure ? "#e27667" : liveActive && !isReportStale ? "#69c8a7" : "#e6a752" }} />{liveFailure ? "CFTC request failed" : liveActive && isReportStale ? "CFTC report may be stale" : liveActive ? "Official CFTC data · weekly" : "Illustrative demo fallback"}</span>
             <span className="subtle" style={{ fontSize: 12 }}>{computed.length} weekly observations · latest report date {latest ? formatDate(latest.date) : "—"}</span>
           </div>
         </div>
         <div className="toolbar print-hidden">
-          <button className="btn" onClick={() => navigate("configuration")}><FileUp size={14} />Import COT data</button>
           <button className="btn" onClick={handleRefresh} disabled={refreshing} data-testid="button-refresh"><RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />{refreshing ? "Checking…" : "Check CFTC"}</button>
           <button className="icon-btn" aria-label="Print or export PDF" title="Print / Save as PDF" onClick={() => window.print()} data-testid="button-print"><Printer size={15} /></button>
           <button className="icon-btn" aria-label="Toggle dark mode" title="Toggle theme" onClick={() => setIsDark(v => !v)} data-testid="button-theme">{isDark ? <Sun size={15} /> : <Moon size={15} />}</button>
         </div>
       </header>
-      <div className={`source-banner ${liveFailure ? "source-error" : isImported ? "source-local" : ""}`} role={liveFailure ? "alert" : "status"} data-testid="status-cftc-source">
-        {liveFailure ? <AlertTriangle size={17} /> : isImported ? <FileUp size={17} /> : <Database size={17} />}
+      <div className={`source-banner ${liveFailure ? "source-error" : ""}`} role={liveFailure ? "alert" : "status"} data-testid="status-cftc-source">
+        {liveFailure ? <AlertTriangle size={17} /> : <Database size={17} />}
         <div className="source-copy">
-          <strong>{isImported ? "Local CSV is active" : liveFailure ? "CFTC source unavailable" : liveActive ? "Official CFTC source" : "CFTC source status"}</strong>
-          <span>{isImported
-            ? "Periodic CFTC checks will not replace this import. Switch back when you want the official CFTC report."
-            : liveFailure
+          <strong>{liveFailure ? "CFTC source unavailable" : liveActive ? "Official CFTC source" : "CFTC source status"}</strong>
+          <span>{liveFailure
               ? `${historyQuery.isError ? "Weekly history request" : "Market list request"} failed${historyQuery.error instanceof Error ? `: ${historyQuery.error.message}` : marketsQuery.error instanceof Error ? `: ${marketsQuery.error.message}` : "."} ${liveActive ? "Existing returned CFTC history remains displayed with its original report date." : "Any displayed rows remain clearly labelled illustrative fallback, not current CFTC data."}`
               : liveActive
                 ? `${reportName} · ${effectiveMarket?.name ?? historyQuery.data?.marketName} · Tuesday report date ${formatDate(historyQuery.data!.reportAsOf)}. ${isReportStale ? "No newer release has been returned; the latest report is over nine days old. CFTC publication may be delayed." : "This is the Tuesday as-of date, not the Friday publication date."}`
                 : "Loading the latest official feed. Any demo rows shown are synthetic and are not relabelled as current CFTC observations."}
           </span>
           <small><Clock3 size={12} /> {checkTime ? `Last checked ${new Date(checkTime).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" })} ET` : "Last check pending"}{historyQuery.data?.reportAsOf ? ` · report as of ${formatDate(historyQuery.data.reportAsOf)}` : marketsQuery.data?.reportAsOf ? ` · market list as of ${formatDate(marketsQuery.data.reportAsOf)}` : ""}</small>
-          {!isImported && <CftcUpdateStatus />}
-          {!isImported && historyQuery.data?.sourceWarning && <small style={{ color: "#e6a752" }}>{historyQuery.data.sourceWarning}</small>}
+          <CftcUpdateStatus />
+          {historyQuery.data?.sourceWarning && <small style={{ color: "#e6a752" }}>{historyQuery.data.sourceWarning}</small>}
         </div>
-        {isImported && <button className="btn source-action print-hidden" onClick={resetData} data-testid="button-switch-to-cftc">Switch to CFTC data</button>}
       </div>
       <div className="toolbar source-controls print-hidden" style={{ justifyContent: "space-between", marginBottom: 18 }}>
         <div className="source-selects">
-          <label className="field"><span className="eyebrow">CFTC report</span><select className="select" value={liveReport} onChange={e => { setLiveReport(e.target.value as "futures" | "combined"); setSelectedMarket(""); }} aria-label="CFTC report type" data-testid="select-cftc-report" disabled={isImported}><option value="futures">Legacy Futures Only</option><option value="combined">Legacy Combined</option></select></label>
-          <div className="field field-market"><span className="eyebrow" id="label-cftc-market">Market</span><MarketSelector markets={marketList} value={effectiveMarket?.name ?? ""} onChange={setSelectedMarket} disabled={isImported} loading={marketsQuery.isLoading} /></div>
+          <label className="field"><span className="eyebrow">CFTC report</span><select className="select" value={liveReport} onChange={e => { setLiveReport(e.target.value as "futures" | "combined"); setSelectedMarket(""); }} aria-label="CFTC report type" data-testid="select-cftc-report"><option value="futures">Legacy Futures Only</option><option value="combined">Legacy Combined</option></select></label>
+          <div className="field field-market"><span className="eyebrow" id="label-cftc-market">Market</span><MarketSelector markets={marketList} value={effectiveMarket?.name ?? ""} onChange={setSelectedMarket} loading={marketsQuery.isLoading} /></div>
         </div>
         <div className="source-summary">
-          <span className="eyebrow">{isImported ? "Active dataset" : "Selected source"}</span>
-          <b>{isImported ? "Browser CSV · local only" : `${reportName} / ${effectiveMarket?.name ?? "Market pending"}`}</b>
-          <small>{isImported ? "CFTC history polling paused for this dataset" : `Tuesday observations · ${historyQuery.data?.rows.length ?? "—"} rows`}</small>
+          <span className="eyebrow">Selected source</span>
+          <b>{`${reportName} / ${effectiveMarket?.name ?? "Market pending"}`}</b>
+          <small>{`Tuesday observations · ${historyQuery.data?.rows.length ?? "—"} rows`}</small>
         </div>
       </div>
+      <SettingsBar display id="configuration" />
       <div className="toolbar" style={{ justifyContent: "space-between", marginBottom: 18 }}>
-        <div className="eyebrow">Calculation profile <span style={{ color: "hsl(var(--foreground))", marginLeft: 8 }}>{isImported ? settings.reportType : reportName}</span> <span className="subtle" style={{ margin: "0 8px" }}>·</span> Legacy net positioning · Long − Short</div>
+        <div className="eyebrow">Calculation profile <span style={{ color: "hsl(var(--foreground))", marginLeft: 8 }}>{reportName}</span> <span className="subtle" style={{ margin: "0 8px" }}>·</span> Legacy net positioning · Long − Short</div>
         <div className="subtle mono" style={{ fontSize: 10 }}>{refreshMark ? `CFTC checked ${refreshMark}` : "Automatic server updates · no open browser required"}</div>
       </div>
 
@@ -446,7 +323,7 @@ function Dashboard() {
         </div>
         <div className="section overview-grid">
           <div className="card">
-            <div className="card-head"><div><h2 className="panel-title">Weekly net positioning</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {isImported ? "Local CSV" : reportName} · Long − Short</div></div><div className="toolbar"><select className="select print-hidden" style={{ width: 115, minHeight: 32, padding: "5px 8px", fontSize: 11 }} value={chartWeeks} onChange={e => setChartWeeks(Number(e.target.value))} aria-label="Chart history range" data-testid="select-chart-range"><option value={13}>13 weeks</option><option value={26}>26 weeks</option><option value={52}>52 weeks</option><option value={0}>All rows</option></select>{exportButton("weekly-positioning", exportRows(visible))}</div></div>
+            <div className="card-head"><div><h2 className="panel-title">Weekly net positioning</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · Long − Short</div></div><div className="toolbar"><select className="select print-hidden" style={{ width: 115, minHeight: 32, padding: "5px 8px", fontSize: 11 }} value={chartWeeks} onChange={e => setChartWeeks(Number(e.target.value))} aria-label="Chart history range" data-testid="select-chart-range"><option value={13}>13 weeks</option><option value={26}>26 weeks</option><option value={52}>52 weeks</option><option value={0}>All rows</option></select>{exportButton("weekly-positioning", exportRows(visible))}</div></div>
             <div className="card-body">
               <div className="control-group" style={{ marginBottom: 8 }}>
                 {([["showLT", "Large", C.large], ["showST", "Small", C.small], ["showCH", "Commercial", C.commercial]] as const).map(([key, label, color]) => <button key={key} className={`seg ${settings[key] ? "active" : ""}`} style={settings[key] ? { background: color, borderColor: color, color: "#fff" } : {}} onClick={() => setSetting(key, !settings[key])}>{label}</button>)}
@@ -467,7 +344,7 @@ function Dashboard() {
                     {showSignalMark && latest && settings.highlight !== "Background Only" && <ReferenceDot x={latest.date} y={selectedPosition} r={6} fill={signalMarkColor} stroke="hsl(var(--card))" strokeWidth={2} ifOverflow="visible" label={{ value: signalMarkText, position: "top", fill: signalMarkColor, fontSize: 10, fontFamily: "DM Mono" }} />}
                   </LineChart>
               </ResponsiveContainer>
-              </div>{settings.showPaneLabel && <div className="eyebrow" style={{ marginTop: 8 }}>{dataMarketLabel} · {isImported ? settings.reportType : reportName} · Long − Short</div>}<div className="chart-foot">Most recent {visible.length} of {computed.length} weekly rows · {dataMarketLabel} · {isImported ? "local import" : reportName} · same observations as analysis table · highlight: {settings.highlight}</div>
+              </div>{settings.showPaneLabel && <div className="eyebrow" style={{ marginTop: 8 }}>{dataMarketLabel} · {reportName} · Long − Short</div>}<div className="chart-foot">Most recent {visible.length} of {computed.length} weekly rows · {dataMarketLabel} · {reportName} · same observations as analysis table · highlight: {settings.highlight}</div>
             </div>
           </div>
           <div className="card">
@@ -545,21 +422,13 @@ function Dashboard() {
       </section>
 
       <section id="signals" className="section">
-        <div style={{ marginBottom: 13 }}><div className="eyebrow">Indicator semantics</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Signals &amp; weekly ledger</h2></div>
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div className="card-head"><div><h3 className="panel-title">Signal interpretation</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Pine-compatible direction conventions applied to local weekly rows</div></div><span className="badge">{settings.signalMode}</span></div>
-          <div className="card-body signal-explainer">
-            <div className="notice"><b>Z-score only</b><br />Large and small trader extremes are contrarian: negative Z is bullish, positive Z bearish. Commercial extremes follow positioning: positive Z bullish, negative Z bearish.</div>
-            <div className="notice"><b>COT confluence</b><br />Commercial and large-trader cycle ranks must sit at opposing configurable extremes. Small trader agreement is optional confirmation.</div>
-            <div className="notice"><b>Both (AND gate)</b><br />Requires the selected participant Z-score direction and opposing-cycle confluence to agree in the same week.</div>
-          </div>
-        </div>
+        <div style={{ marginBottom: 13, display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12 }}><div><div className="eyebrow">Indicator semantics</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Signals &amp; weekly ledger</h2></div><Link href="/how-it-works#settings" className="subtle print-hidden" style={{ fontSize: 12 }}>How the signal modes work</Link></div>
         <div className="card">
-          <div className="card-head"><div><h3 className="panel-title">Weekly calculations</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {isImported ? settings.reportType : reportName} · one record per Tuesday report date; latest row drives readout</div></div>
+          <div className="card-head"><div><h3 className="panel-title">Weekly calculations</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · one record per Tuesday report date; latest row drives readout</div></div>
             <div className="toolbar print-hidden">{exportButton("weekly-ledger")}<button className="btn" onClick={() => setTablePage(p => Math.max(0, p - 1))} disabled={tablePage === 0}>Previous</button><button className="btn" onClick={() => setTablePage(p => Math.min(Math.ceil(computed.length / 10) - 1, p + 1))} disabled={(tablePage + 1) * 10 >= computed.length}>Next</button></div>
           </div>
           <div className="card-body" style={{ paddingTop: 12 }}>
-            {computed.length === 0 ? <div className="file-drop">No usable rows. Import a weekly COT CSV to begin.</div> : <div className="table-wrap"><table>
+            {computed.length === 0 ? <div className="file-drop">No usable weekly rows for this market.</div> : <div className="table-wrap"><table>
               <thead><tr><th>Report date</th><th>Large net</th><th>Small net</th><th>Commercial net</th><th>Δ commercial</th><th>CH Z</th><th>CH Δ score</th><th>Cycle LT / CH</th><th>OI move</th><th>Indicator state</th></tr></thead>
               <tbody style={{ fontSize: ({ Tiny: 10, Small: 12, Normal: 13, Large: 15, Huge: 17, Auto: 12 } as Record<string, number>)[settings.tableSize] }} >{tableRows.map((r, i) => <tr key={r.date} data-testid={`row-ledger-${i}`}>
                 <td className="mono">{formatDate(r.date)}</td><td className={`mono ${changeTone(r.large_traders)}`}>{signed(r.large_traders)}</td><td className={`mono ${changeTone(r.small_traders)}`}>{signed(r.small_traders)}</td><td className={`mono ${changeTone(r.commercial_hedgers)}`}>{signed(r.commercial_hedgers)}</td>
@@ -573,69 +442,9 @@ function Dashboard() {
         </div>
       </section>
 
-      <section id="configuration" className="section">
-        <div style={{ marginBottom: 13 }}><div className="eyebrow">Controls &amp; local data</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Configuration</h2></div>
-        <ModelNotice />
-        <div className="setting-grid">
-          <div className="card"><div className="card-head"><div><h3 className="panel-title">Core settings</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Market context and signal selection</div></div></div>
-            <div className="card-body" style={{ display: "grid", gap: 14 }}>
-              {isImported ? <>
-                <div className="field"><label htmlFor="market-label">CSV dataset label (optional)</label><input id="market-label" className="input" placeholder="e.g. S&amp;P 500 E-mini" value={settings.marketLabel} onChange={e => setSetting("marketLabel", e.target.value.slice(0, 80))} data-testid="input-market-label" /></div>
-                <div className="field"><label htmlFor="report-type">CSV report type</label><select id="report-type" className="select" value={settings.reportType} onChange={e => setSetting("reportType", e.target.value)} data-testid="select-report-type"><option>Legacy Futures Only</option><option>Legacy Combined</option></select></div>
-                <div className="notice">These labels describe the imported CSV. The selected report data itself is not transformed.</div>
-              </> : <div className="notice">Source: official CFTC Legacy reports, published weekly. Choose the report and market above; the dashboard loads the weekly history automatically.</div>}
-              <div className="field"><label htmlFor="participant-type">Participant for Z-score signals</label><select id="participant-type" className="select" value={settings.participant} onChange={e => setSetting("participant", e.target.value)} data-testid="select-participant"><option>Large Traders</option><option>Small Traders</option><option>Commercial Hedgers</option></select></div>
-              <div className="field"><label htmlFor="signal-mode">Signal mode</label><select id="signal-mode" className="select" value={settings.signalMode} onChange={e => setSetting("signalMode", e.target.value)} data-testid="select-signal-mode"><option>Z-Score Only</option><option>COT Confluence</option><option>Both (AND gate)</option></select></div>
-            </div>
-          </div>
-          <div className="card"><div className="card-head"><div><h3 className="panel-title">Calculation thresholds</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Rolling window and cycle extremes</div></div></div>
-            <div className="card-body" style={{ display: "grid", gap: 14 }}>
-              <div className="field"><label htmlFor="lookback">Lookback period · weeks</label><input id="lookback" className="input mono" type="number" min="3" max="500" value={settings.lookback} onChange={e => setSetting("lookback", Math.max(3, Math.min(500, Number(e.target.value) || 3)))} data-testid="input-lookback" /></div>
-              <div className="field"><label htmlFor="z-method">Z-score calculation</label><select id="z-method" className="select" value={settings.zMethod} onChange={e => setSetting("zMethod", e.target.value)} data-testid="select-z-method"><option>Standard Z-Score</option><option>Open Interest Normalization</option></select></div>
-              <div className="field"><label htmlFor="z-threshold">Z-score threshold · standard deviations</label><input id="z-threshold" className="input mono" type="number" min="0" max="20" step=".1" value={settings.zThreshold} onChange={e => setSetting("zThreshold", Math.max(0, Math.min(20, Number(e.target.value) || 0)))} data-testid="input-z-threshold" /></div>
-              <div className="field"><label htmlFor="conf-threshold">Confluence cycle threshold · %</label><input id="conf-threshold" className="input mono" type="number" min="50" max="95" step="5" value={settings.confluenceThreshold} onChange={e => setSetting("confluenceThreshold", Math.max(50, Math.min(95, Number(e.target.value) || 50)))} data-testid="input-confluence-threshold" /></div>
-              <div className="field"><label htmlFor="oi-threshold">Open interest move threshold · %</label><input id="oi-threshold" className="input mono" type="number" min="1" max="100" value={settings.oiThreshold} onChange={e => setSetting("oiThreshold", Math.max(1, Math.min(100, Number(e.target.value) || 1)))} data-testid="input-oi-threshold" /></div>
-            </div>
-          </div>
-          <div className="card"><div className="card-head"><div><h3 className="panel-title">Display controls</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Participant visibility and highlight style</div></div></div>
-            <div className="card-body">
-              {[["Enable Z-score detection", "zEnabled"], ["Require small trader confirmation", "requireSmall"], ["Enable large position change", "changeEnabled"], ["Show buy / sell labels", "showSignals"], ["Show pane label", "showPaneLabel"]].map(([label, key]) => <div className="switch-row" key={key}><span>{label}</span><input className="switch" type="checkbox" checked={Boolean(settings[key as keyof Settings])} onChange={e => setSetting(key as keyof Settings, e.target.checked as never)} aria-label={label} /></div>)}
-              <div className="field" style={{ marginTop: 14 }}><label htmlFor="highlight">Highlight style</label><select id="highlight" className="select" value={settings.highlight} onChange={e => setSetting("highlight", e.target.value)}><option>Shapes + Background</option><option>Shapes Only</option><option>Background Only</option></select></div>
-              <div className="field" style={{ marginTop: 12 }}><label htmlFor="table-size">Table density</label><select id="table-size" className="select" value={settings.tableSize} onChange={e => setSetting("tableSize", e.target.value)}>{["Tiny", "Small", "Normal", "Large", "Huge", "Auto"].map(x => <option key={x}>{x}</option>)}</select></div>
-            </div>
-          </div>
-        </div>
-        <div className="card section">
-          <div className="card-head"><div><h3 className="panel-title">Import weekly COT rows</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>CSV is parsed and stored locally in this browser only</div></div><FileUp size={17} className="subtle" /></div>
-          <div className="card-body">
-            <div className="import-grid">
-              <div>
-                <div className="file-drop">
-                  <Upload size={20} style={{ color: "hsl(var(--primary))", margin: "0 auto 9px" }} />
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>Choose a weekly CSV file</div>
-                  <div className="subtle" style={{ fontSize: 11, margin: "5px 0 12px" }}>Weekly rows · sorted by report date · up to 15 MB</div>
-                  <input ref={fileRef} type="file" accept=".csv,text/csv" aria-label="Import COT CSV file" data-testid="input-csv-file" onChange={e => importFile(e.target.files?.[0])} />
-                  {uploadError && <div className="error" role="alert" data-testid="text-import-error">{uploadError}</div>}
-                  {uploadMessage && <div className="success" role="status" data-testid="text-import-success">{uploadMessage}</div>}
-                </div>
-                <div className="toolbar" style={{ marginTop: 11 }}>
-                  <button className="btn" onClick={() => makeCsv(DEMO_ROWS.map(r => ({ date: r.date, large_traders: r.large_traders, small_traders: r.small_traders, commercial_hedgers: r.commercial_hedgers, open_interest: r.open_interest })), "cot-illustrative-template.csv")} data-testid="button-download-template"><Download size={14} />Download example CSV</button>
-                  {isImported && <button className="btn" onClick={resetData} data-testid="button-reset-demo">Switch back to CFTC data</button>}
-                </div>
-              </div>
-              <div>
-                <div className="eyebrow" style={{ marginBottom: 9 }}>Accepted columns</div>
-                <div className="notice" style={{ marginBottom: 12 }}><b>Required:</b> report date and net long-minus-short positions for large, small, and commercial traders, or raw CFTC Long/Short positions for each group.<br /><b>Optional:</b> open interest</div>
-                <div className="subtle" style={{ fontSize: 11, lineHeight: 1.8 }}>Aliases include <span className="mono">report_date</span>, <span className="mono">noncommercial</span>, <span className="mono">nonreportable</span>, <span className="mono">commercial</span>, and <span className="mono">openinterest</span>. Standard CFTC long/short columns are converted to net values.</div>
-                <div className="notice" style={{ marginTop: 12 }}>Rows are sorted by report date. Duplicate dates and invalid participant values are rejected with an actionable message. Imported records are kept in this browser only; no upload request is made.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <footer style={{ marginTop: 24, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 10, color: "hsl(var(--muted-foreground))" }}>
-          <span>COT Quant · CFTC public-data research surface</span><span>{isImported ? "Imported CSV is stored on this device" : liveActive ? "CFTC source · calculations run in this browser" : "Fallback sample is synthetic and not actual CFTC data"}</span>
-        </footer>
-      </section>
+      <footer style={{ marginTop: 24, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 10, color: "hsl(var(--muted-foreground))" }}>
+          <span>COT Quant · CFTC public-data research surface</span><span>{liveActive ? "CFTC source · calculations run in this browser" : "Fallback sample is synthetic and not actual CFTC data"}</span>
+      </footer>
     </main>
     <SiteMobileNav activeSection={activeSection} onSection={navigate} />
   </div>;
