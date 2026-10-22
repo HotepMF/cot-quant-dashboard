@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { expectedReportDate, nextCftcCheck } from "../src/services/cot-update-schedule.ts";
+import { expectedReportDate, nextCftcCheck } from "../cloudflare/update-schedule.ts";
 
 const date = value => Date.parse(value);
 const next = (now, reports, failed = false) => nextCftcCheck(date(now), reports, failed).toISOString();

@@ -2,8 +2,8 @@
 
 This target uses **Workers Free, Static Assets, the existing D1 database, and standard
 GitHub Actions runners in a public repository**. It does not use paid CPU limits,
-Cloudflare Workflows, Hyperdrive, an external PostgreSQL provider, or a Replit
-process to keep production updated. Replit's PostgreSQL preview stays separate.
+Cloudflare Workflows, Hyperdrive or an external database. This is the only backend:
+local development runs the same Worker (see README.md).
 
 ## How it works
 
@@ -54,7 +54,7 @@ repository is still the active build source.
 | Root directory | `/` (repository root) |
 | Build command | `pnpm cloudflare:build` |
 | Deploy command | `pnpm cloudflare:publish-built` |
-| Node | `24` |
+| Node | build variable `NODE_VERSION=24.14.1` (pinned 2026-10-22: the builder's default Node 24.21.0 hung during tool install) |
 
 Use Worker + Static Assets, not a frontend-only Pages deployment. Do not use
 `pnpm run build`: it includes development-only packages that are not the

@@ -1,4 +1,4 @@
-import { expectedReportDate, nextCftcCheck } from "../src/services/cot-update-schedule";
+import { expectedReportDate, nextCftcCheck } from "./update-schedule";
 import { leaseGuard, NOW, statement, type Sql } from "./database";
 import { JOB_ID, REPORTS, type History, type Market, type ReportKey } from "./types";
 
