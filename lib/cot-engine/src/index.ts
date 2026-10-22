@@ -118,7 +118,7 @@ export function setupScore(row: CalcRow, settings: SignalSettings) {
   const score = settings.signalMode === "Z-Score Only" ? zStrength : settings.signalMode === "Both (AND gate)" ? (confluence + zStrength) / 2 : confluence;
   return Math.round(score * 10) / 10;
 }
-export { BENCHMARK, POSITIONING_GROUPS, POSITIONING_MARKETS, SECTOR_ETFS, SECTOR_LINKS, SECTOR_PANELS, rangeLabel } from "./sectors";
+export { BENCHMARK, POSITIONING_GROUPS, POSITIONING_MARKETS, SECTOR_ETFS, SECTOR_LINKS, SECTOR_PANELS, SECTOR_WATCH, rangeLabel } from "./sectors";
 export type { Momentum, PositioningMarketId, PositioningRow, RangeLabel, SectorRow, SectorsSnapshot } from "./sectors";
 export { HAND_CATEGORIES, HAND_FOOTER, HAND_PARTICIPATION, HAND_POWER_PRODUCERS, HAND_RANGES, HAND_RANGE_TICKERS, HAND_TICKERS } from "./invisible-hand";
 export type { CrowdedRow, HandCard, HandCardId, HandReport, HandSnapshot, ParticipationRow, RangeRow, Reading } from "./invisible-hand";

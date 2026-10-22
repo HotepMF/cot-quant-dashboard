@@ -57,6 +57,8 @@
 .ev-tag.up { background:hsl(var(--muted));color:hsl(var(--foreground)); }
 .ev-tag.up.wide { background:rgba(230,167,82,.18);color:#e6a752; }
 .ev-tag.data { border:1px solid hsl(var(--border));color:hsl(var(--muted-foreground)); }
+.sx-watch { font-size:11.5px;line-height:1.55;border-top:1px dashed hsl(var(--border));padding-top:8px; }
+.sx-watch .sx-vd { margin-right:4px; }
 @media(max-width:1500px) { .sx-grid { grid-template-columns:minmax(0,1fr); } }
 @media(max-width:760px) {
   .hide-sm { display:none; }
