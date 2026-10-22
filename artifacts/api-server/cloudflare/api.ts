@@ -14,6 +14,19 @@ export async function handleApi(request: Request, env: Env, ctx?: ExecutionConte
   const url = new URL(request.url);
   const path = url.pathname;
   if (path === "/api/healthz") return request.method === "GET" ? json({ status: "ok" }) : json({ message: "Method not allowed." }, 405);
+  if (path === "/api/sectors") {
+    if (request.method !== "GET") return json({ message: "Method not allowed." }, 405);
+    try {
+      // Pre-serialized daily snapshot from the sectors job; the Worker only forwards it.
+      return await database(env, async sql => {
+        const saved = await statement(sql, "SELECT payload FROM cot_cf_documents WHERE key='sectors'").first<{ payload: string }>();
+        return saved ? response(saved.payload) : json({ message: "The sectors snapshot has not been prepared yet." }, 503);
+      });
+    } catch (error) {
+      console.error("sectors-api-failed", { kind: error instanceof Error ? error.name : "UnknownError" });
+      return json({ message: "Sectors storage is temporarily unavailable." }, 503);
+    }
+  }
   if (!["/api/cot/update-status", "/api/cot/markets", "/api/cot/market", "/api/cot/screener", "/api/cot/screener/refresh"].includes(path)) return json({ message: "API route not found." }, 404);
   if (request.method !== (path.endsWith("/refresh") ? "POST" : "GET")) return json({ message: "Method not allowed." }, 405);
   try {

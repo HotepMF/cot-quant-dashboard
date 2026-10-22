@@ -1,6 +1,7 @@
 import { handleApi } from "./api";
 import { withDatabase } from "./database";
 import { automationConfigured, launchUpdate } from "./launcher";
+import { launchSectors } from "./sectors-launcher";
 import type { Env } from "./types";
 
 export default {
@@ -11,6 +12,10 @@ export default {
   },
   async scheduled(_controller: ScheduledController, env: Env) {
     if (!automationConfigured(env)) return;
-    await withDatabase(env, sql => launchUpdate(sql, env));
+    await withDatabase(env, async sql => {
+      // The daily sectors job is independent: its failure never blocks the CFTC collection.
+      await launchSectors(sql, env).catch(() => undefined);
+      await launchUpdate(sql, env);
+    });
   },
 } satisfies ExportedHandler<Env>;

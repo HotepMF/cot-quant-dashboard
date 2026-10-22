@@ -15,6 +15,7 @@ import type { Settings } from "@/lib/settings-store";
 import { SectorSignalsPage } from "@/pages/sector-signals";
 import { SignalWatchlistPage } from "@/pages/signal-watchlist";
 import { HowItWorksPage } from "@/pages/how-it-works";
+import { SectorsPage } from "@/pages/sectors";
 import NotFound from "@/pages/not-found";
 import {
   Activity, BarChart3, CircleHelp, Download, FileUp, Moon, Printer, RefreshCw,
@@ -650,6 +651,8 @@ function App() {
     <Route path="/sector-signals" component={SectorSignalsPage} />
     <Route path="/signal-watchlist" component={SignalWatchlistPage} />
     <Route path="/how-it-works" component={HowItWorksPage} />
+    {/* Unlisted until a licensed price source is connected. */}
+    <Route path="/sectors" component={SectorsPage} />
     <Route component={NotFound} />
   </Switch>;
 }

@@ -102,3 +102,5 @@ export function setupScore(row: CalcRow, settings: SignalSettings) {
   const score = settings.signalMode === "Z-Score Only" ? zStrength : settings.signalMode === "Both (AND gate)" ? (confluence + zStrength) / 2 : confluence;
   return Math.round(score * 10) / 10;
 }
+export { BENCHMARK, POSITIONING_GROUPS, POSITIONING_MARKETS, SECTOR_ETFS, SECTOR_LINKS, SECTOR_PANELS, rangeLabel } from "./sectors";
+export type { Momentum, PositioningMarketId, PositioningRow, RangeLabel, SectorRow, SectorsSnapshot } from "./sectors";
