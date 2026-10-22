@@ -4,9 +4,8 @@ import type { SignalSettings } from "@workspace/cot-engine";
 
 /** UI settings extend the shared engine settings so detail and scanner stay on one rule set. */
 export type Settings = SignalSettings & {
-  reportType: string; highlight: string; showSignals: boolean;
+  highlight: string; showSignals: boolean;
   showPaneLabel: boolean; tableSize: string; showLT: boolean; showST: boolean; showCH: boolean; showOI: boolean;
-  marketLabel: string;
 };
 
 export const STORAGE_SETTINGS = "cot-quant-settings-v1";
@@ -21,8 +20,8 @@ const MODEL_KEYS = Object.keys(defaultSignalSettings) as (keyof typeof defaultSi
 
 export const initialSettings: Settings = {
   ...defaultSignalSettings,
-  reportType: "Legacy Futures Only", highlight: "Background Only", showSignals: true, showPaneLabel: false,
-  tableSize: "Small", showLT: true, showST: true, showCH: true, showOI: true, marketLabel: "",
+  highlight: "Background Only", showSignals: true, showPaneLabel: false,
+  tableSize: "Small", showLT: true, showST: true, showCH: true, showOI: true,
 };
 
 function load(): Settings {
@@ -38,11 +37,9 @@ function load(): Settings {
       }
       localStorage.setItem(STORAGE_MODEL_VERSION, String(MODEL_VERSION));
     }
-    const savedReport = saved.reportType;
     return {
       ...initialSettings, ...saved,
       lookback: Number.isFinite(Number(saved.lookback)) ? Math.max(3, Math.min(500, Math.round(Number(saved.lookback)))) : initialSettings.lookback,
-      reportType: savedReport === "Legacy Combined" || savedReport === "Futures + Options" ? "Legacy Combined" : "Legacy Futures Only",
     };
   } catch { return initialSettings; }
 }

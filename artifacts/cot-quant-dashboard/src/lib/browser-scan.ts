@@ -1,4 +1,4 @@
-import { defaultSignalSettings } from "@workspace/cot-engine";
+import { coreMarketByCode, defaultSignalSettings } from "@workspace/cot-engine";
 import { getCotScreener, type CotScreenerResponse, type GetCotScreenerParams } from "@workspace/api-client-react";
 
 type Pending = { resolve: (value: CotScreenerResponse) => void; reject: (error: Error) => void; progress: (done: number, total: number) => void; cleanup: () => void };
@@ -28,6 +28,15 @@ function getWorker() {
   return worker;
 }
 
+/**
+ * The scanner pages show the core markets only, so scans cover only those: custom scans fetch about 40 histories
+ * instead of 370, and counts match what the page shows. Every market stays reachable on market detail.
+ */
+function coreOnly(data: CotScreenerResponse): CotScreenerResponse {
+  const markets = data.markets.filter(m => coreMarketByCode.has(m.code));
+  return { ...data, markets, total: markets.length, processed: markets.filter(m => m.status !== "loading").length };
+}
+
 export async function loadScreener(params: GetCotScreenerParams, signal: AbortSignal, progress: (done: number, total: number) => void): Promise<CotScreenerResponse> {
   const base = new URL(import.meta.env.BASE_URL, window.location.origin);
   const url = new URL("api/cot/screener", base);
@@ -35,14 +44,14 @@ export async function loadScreener(params: GetCotScreenerParams, signal: AbortSi
   const response = await fetch(url, { signal });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.message ?? "The prepared CFTC scan is unavailable.");
-  const data = payload as CotScreenerResponse;
+  const data = coreOnly(payload as CotScreenerResponse);
   // The prepared scan is used only when it was built with the current defaults (a deploy that changes them leaves the
   // old scan in place until the next collection; the browser worker covers that gap).
   const preparedIsCurrent = Object.entries(defaultSignalSettings).every(([k, v]) => (data.settings as unknown as Record<string, unknown> | undefined)?.[k] === v);
   if (matchesDefaults(params) && preparedIsCurrent) return data;
   // Without a snapshot id the browser cannot pin one consistent dataset, so ask the API (default scan only).
   const snapshot = response.headers.get("X-COT-Snapshot");
-  if (!snapshot) return getCotScreener(params, { signal });
+  if (!snapshot) return coreOnly(await getCotScreener(params, { signal }));
   const id = crypto.randomUUID();
   const scanner = getWorker();
   return new Promise((resolve, reject) => {

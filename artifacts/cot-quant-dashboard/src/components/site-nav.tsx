@@ -6,7 +6,7 @@ export const workspaceSections = [
   { id: "summary", label: "Market overview", icon: BarChart3 },
   { id: "positioning", label: "Positioning", icon: Waves },
   { id: "signals", label: "Signal analysis", icon: Activity },
-  { id: "configuration", label: "Configuration", icon: Settings2 },
+  { id: "configuration", label: "Settings", icon: Settings2 },
 ];
 
 export const researchLinks = [

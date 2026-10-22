@@ -41,7 +41,7 @@ export function HowItWorksPage() {
       </header>
 
       <nav className="hiw-toc print-hidden" aria-label="On this page">
-        {[["cot", "The COT report"], ["reading", "Reading the site"], ["model", "The default model"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["invisible-hand", "The Invisible Hand"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
+        {[["cot", "The COT report"], ["reading", "Reading the site"], ["model", "The default model"], ["settings", "Settings"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["invisible-hand", "The Invisible Hand"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
           <a key={id} href={`#${id}`} className="ms-chip" onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</a>)}
       </nav>
 
@@ -76,6 +76,22 @@ export function HowItWorksPage() {
             <li>Longer lookbacks (32, 48, 64) did not show it, and keeping the filter open after the signal ended diluted it.</li>
           </ul>
           <p>That makes it our <b>best-tested setting, labeled Speculation</b>: it was found by searching, so it is not validated. It is being forward-tested in a public demo account on <Link href="/invisible-hand">The Invisible Hand</Link>, with frozen rules and every loss shown. Positioning still does not time moves by itself; read setups as context, not instructions.</p>
+        </Section>
+
+        <Section id="settings" title="Settings">
+          <p>The settings bar sits under the market picker on market detail and at the top of Sector signals and Signal watchlist. One set of settings drives all three pages, and the site remembers yours. Click the bar to open it; "site default" or "custom" shows which you are using.</p>
+          <ul>
+            <li><b>Participant</b>: the group whose Z-score gates the signal. Commercial hedgers are followed (an extreme long is bullish); large and small traders are faded (an extreme long is bearish).</li>
+            <li><b>Signal mode</b>: <b>Z-Score Only</b> fires when the participant's net position is an extreme for the lookback. <b>COT Confluence</b> fires when commercials and large traders sit at opposite ends of their full history (cycle rank), with small traders as optional confirmation. <b>Both (AND gate)</b> needs the two to agree in the same week. It is the strictest mode and the site default.</li>
+            <li><b>Z calculation</b>: <b>Standard</b> uses the raw net position. <b>OI normalization</b> divides each week's net position by that week's open interest first, so a market that has grown or shrunk is compared fairly. A week with missing open interest leaves no Z until the window is complete again.</li>
+            <li><b>Lookback</b>: how many weeks the Z-score compares against (16 by default).</li>
+            <li><b>Z threshold</b>: how many standard deviations count as an extreme (2.0 by default).</li>
+            <li><b>Confluence cycle</b>: how far toward the ends of their history commercials and large traders must be (65% means commercials at or above 65% and large traders at or below 35%, or the reverse).</li>
+            <li><b>OI move alert</b>: flags a week when open interest changes by at least this percentage.</li>
+            <li><b>Switches</b>: Z-score detection on or off; small trader confirmation for confluence; large position change flags a weekly change larger than half the Z threshold in standard deviations.</li>
+            <li><b>Market detail display</b>: buy / sell labels and the chart label, the chart highlight style (shapes, background or both), and the table text size. These change what you see, not the calculations.</li>
+          </ul>
+          <p>A signal is a mechanical rule state, not a recommendation. See The default model above for what our tests found about these settings.</p>
         </Section>
 
         <Section id="markets" title="Which markets">
