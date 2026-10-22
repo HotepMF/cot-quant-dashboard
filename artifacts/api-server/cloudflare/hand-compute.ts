@@ -1,5 +1,6 @@
 import {
-  CORE_MARKETS, HAND_PARTICIPATION, HAND_POWER_PRODUCERS, HAND_RANGES,
+  CORE_MARKETS, HAND_PARTICIPATION, HAND_POWER_PRODUCERS, HAND_RANGES, computeRows, defaultSignalSettings,
+  type RawRow, type WeekBar,
   type CrowdedRow, type HandCard, type HandSnapshot, type ParticipationRow, type RangeRow,
 } from "@workspace/cot-engine";
 import type { CategoryHistory, CurvePoint, DailyBars, LatestCounts, SiteHistory } from "./hand-sources";
@@ -266,6 +267,34 @@ export function crowdedRows(histories: Map<string, SiteHistory>): CrowdedRow[] {
     out.push({ code: m.code!, symbol: m.symbol, label: m.label, group: m.group, reportDate: now.date, specNetPct: round(now.v)!, specPct3y: sp, commPct3y: cp, chg4w: prev ? round(now.v - prev.v) : null, side: sp >= 90 ? "top" : "bottom" });
   }
   return out.sort((a, b) => Math.abs(b.specPct3y - 50) - Math.abs(a.specPct3y - 50));
+}
+
+/** Monday-Friday bars labelled by their Friday, completed weeks only (a week is complete after Friday 17:30 New York). */
+export function completedWeeks(b: DailyBars, now = new Date()): WeekBar[] {
+  const ny = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(now).map(p => [p.type, p.value]));
+  const today = `${ny.year}-${ny.month}-${ny.day}`, late = Number(ny.hour) * 60 + Number(ny.minute) >= 17 * 60 + 30;
+  const out: WeekBar[] = [];
+  b.dates.forEach((d, i) => {
+    const t = Date.parse(`${d}T00:00:00Z`);
+    const week = new Date(t + ((5 - new Date(t).getUTCDay() + 7) % 7) * 86_400_000).toISOString().slice(0, 10);
+    const last = out.at(-1);
+    if (last?.week === week) { last.high = Math.max(last.high, b.high[i]); last.low = Math.min(last.low, b.low[i]); last.close = b.close[i]; }
+    else out.push({ week, open: b.open[i], high: b.high[i], low: b.low[i], close: b.close[i] });
+  });
+  return out.filter(w => w.week < today || (w.week === today && late));
+}
+
+/** The site's default filter per report week (keyed by that week's Friday) from the site's own Legacy histories. */
+export function filterByWeek(history: SiteHistory): Record<string, 1 | -1 | 0> {
+  const rows: RawRow[] = history.map(r => ({ date: r.date, large_traders: r.largeTraders, small_traders: r.smallTraders ?? 0, commercial_hedgers: r.commercialHedgers, ...(r.openInterest ? { open_interest: r.openInterest } : {}) }));
+  const out: Record<string, 1 | -1 | 0> = {};
+  computeRows(rows, defaultSignalSettings).forEach(r => {
+    const t = Date.parse(`${r.date}T00:00:00Z`);
+    const fri = new Date(t + ((5 - new Date(t).getUTCDay() + 7) % 7) * 86_400_000).toISOString().slice(0, 10);
+    out[fri] = r.buy && !r.sell ? 1 : r.sell && !r.buy ? -1 : 0;
+  });
+  return out;
 }
 
 export type HandInputs = {
