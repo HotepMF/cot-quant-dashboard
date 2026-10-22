@@ -40,7 +40,7 @@ export async function loadScreener(params: GetCotScreenerParams, signal: AbortSi
   // old scan in place until the next collection; the browser worker covers that gap).
   const preparedIsCurrent = Object.entries(defaultSignalSettings).every(([k, v]) => (data.settings as unknown as Record<string, unknown> | undefined)?.[k] === v);
   if (matchesDefaults(params) && preparedIsCurrent) return data;
-  // The Node/Replit preview retains its existing API contract and server calculation.
+  // Without a snapshot id the browser cannot pin one consistent dataset, so ask the API (default scan only).
   const snapshot = response.headers.get("X-COT-Snapshot");
   if (!snapshot) return getCotScreener(params, { signal });
   const id = crypto.randomUUID();

@@ -57,6 +57,7 @@ const STORAGE_DATA = "cot-quant-local-rows-v1";
 const STORAGE_THEME = "cot-quant-theme-v2";
 const STORAGE_SOURCE = "cot-quant-source-selection-v1";
 const STORAGE_CONSOLIDATED_DEFAULT = "cot-quant-consolidated-default-v1";
+const signalKind = (mode: string) => mode === "Z-Score Only" ? "Z-score" : mode === "Both (AND gate)" ? "AND-gate" : "confluence";
 const fmt = (n: number | null | undefined, digits = 0) => n == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits });
 const signed = (n: number | null | undefined, digits = 0) => n == null || !Number.isFinite(n) ? "—" : `${n > 0 ? "+" : ""}${fmt(n, digits)}`;
 const formatDate = (s: string) => new Date(`${s}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -336,7 +337,7 @@ function Dashboard() {
     commercial_hedgers_net: r.commercial_hedgers, open_interest: r.open_interest ?? "",
     large_z: r.ltZ, small_z: r.stZ, commercial_z: r.chZ, large_cycle_pct: r.ltCycle, small_cycle_pct: r.stCycle, commercial_cycle_pct: r.chCycle,
     commercial_delta: r.chDelta, commercial_delta_percentile: r.chDeltaPct, commercial_delta_z: r.chDeltaZ,
-    signal: r.buy ? (settings.signalMode === "Z-Score Only" ? "Bullish Z-score" : "Bullish confluence") : r.sell ? (settings.signalMode === "Z-Score Only" ? "Bearish Z-score" : "Bearish confluence") : "No signal", oi_change_pct: r.oiMove,
+    signal: r.buy ? `Bullish ${signalKind(settings.signalMode)}` : r.sell ? `Bearish ${signalKind(settings.signalMode)}` : "No signal", oi_change_pct: r.oiMove,
   }));
   const exportButton = (name: string, records: Record<string, unknown>[] = exportRows()) => <button className="icon-btn print-hidden" title={`Export ${name} chart data as CSV`} aria-label={`Export ${name} chart data as CSV`} data-testid={`export-${name}-csv`} onClick={() => makeCsv(records, `cot-${name}.csv`)}><Download size={15} /></button>;
   const chartTick = { fill: "hsl(var(--muted-foreground))", fontSize: 11, fontFamily: "DM Mono" };
