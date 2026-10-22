@@ -6,6 +6,7 @@ import { POSITIONING_GROUPS, SECTOR_LINKS } from "@workspace/cot-engine";
 import type { PositioningRow, SectorRow, SectorsSnapshot } from "@workspace/cot-engine";
 import { useTheme } from "@/components/scanner/scanner-shell";
 import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
+import { EventTags } from "@/components/event-tags";
 import "./sectors.css";
 
 const signed = (v: number | null, d = 1, unit = "") => v == null ? "—" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(d)}${unit}`;
@@ -107,14 +108,14 @@ function Monitor({ data }: { data: SectorsSnapshot }) {
       <tbody>{data.positioning.map(p => {
         const tone = p.label3y.startsWith("Crowded") ? "crowd" : p.label3y === "Mid-range" ? "mid" : "lean";
         return <tr key={p.id} data-testid={`row-positioning-${p.id}`}>
-          <td className="sx-tk">{p.symbol}</td><td className="sx-nm">{p.label}</td><td className="num">{signed(p.price13w, 1, "%")}</td>
+          <td className="sx-tk">{p.symbol}</td><td className="sx-nm">{p.label}<EventTags code={p.code} reportDate={p.reportDate} /></td><td className="num">{signed(p.price13w, 1, "%")}</td>
           <td><RangeBar funds={p.fundsPct3y} other={p.otherPct3y} /></td>
           <td className="num">{ordinal(p.fundsPct3y)}</td><td className="num">{ordinal(p.otherPct3y)}</td><td className="num">{signed(p.fundsChg4w)}</td>
           <td className={`sx-lab ${tone}`}>{p.label3y}</td>
         </tr>;
       })}</tbody>
     </table></div>
-    <div className="sx-cap sx-legend"><span><span className="sx-mk funds static" /> funds (managed money · leveraged funds)</span><span><span className="sx-mk other static" /> producers · asset managers</span><span>shaded = top / bottom 10%</span></div>
+    <div className="sx-cap sx-legend"><span><span className="ev-tag up">FOMC Wed</span> scheduled next 7 days · <span className="ev-tag data">in data</span> during this report's week</span><span><span className="sx-mk funds static" /> funds (managed money · leveraged funds)</span><span><span className="sx-mk other static" /> producers · asset managers</span><span>shaded = top / bottom 10%</span></div>
   </section>;
 }
 

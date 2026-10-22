@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
-import { HAND_PARTICIPATION, HAND_TICKERS } from "@workspace/cot-engine";
+import { CORE_MARKETS, HAND_PARTICIPATION, HAND_RANGE_TICKERS, HAND_TICKERS } from "@workspace/cot-engine";
 import { buildHand } from "./hand-compute";
-import { cftcParticipation, treasuryCurve } from "./hand-sources";
+import { cftcParticipation, siteHistories, treasuryCurve, yahooBars, type DailyBars } from "./hand-sources";
 import { RestD1 } from "./rest-d1";
 import { saveSnapshot } from "./sectors-cli";
 import { priceSource, type DailyCloses } from "./sectors-sources";
@@ -26,7 +26,14 @@ async function main() {
   const participation = new Map<string, Awaited<ReturnType<typeof cftcParticipation>>>();
   for (const spec of HAND_PARTICIPATION) participation.set(spec.code, await cftcParticipation(spec.report, spec.code, spec.categories, token));
   const curve = await treasuryCurve().catch(() => null);
-  const snapshot = buildHand({ generatedAt: new Date().toISOString(), priceSource: source.name, prices, curve, participation });
+  // Day-trader backdrop: context only, so a failure here leaves those panels empty rather than failing the run.
+  const rangeBars = new Map<"ES" | "NQ", DailyBars>();
+  for (const [market, ticker] of Object.entries(HAND_RANGE_TICKERS) as ["ES" | "NQ", string][]) {
+    try { rangeBars.set(market, await yahooBars(ticker)); } catch { console.warn(`Price unavailable: ${ticker}`); }
+  }
+  const coreCodes = new Map(CORE_MARKETS.filter(m => m.code).map(m => [m.code!, m.symbol]));
+  const histories = await siteHistories(coreCodes).catch(() => { console.warn("Site histories unavailable."); return undefined; });
+  const snapshot = buildHand({ generatedAt: new Date().toISOString(), priceSource: source.name, prices, curve, participation, rangeBars, siteHistories: histories });
   if (process.argv.includes("--dry-run")) { console.info(JSON.stringify(snapshot, null, 2)); return; }
 
   const config = JSON.parse(await readFile(new URL("../../../wrangler.jsonc", import.meta.url), "utf8"));

@@ -1,8 +1,8 @@
 import {
-  HAND_PARTICIPATION, HAND_POWER_PRODUCERS,
-  type HandCard, type HandSnapshot, type ParticipationRow,
+  CORE_MARKETS, HAND_PARTICIPATION, HAND_POWER_PRODUCERS, HAND_RANGES,
+  type CrowdedRow, type HandCard, type HandSnapshot, type ParticipationRow, type RangeRow,
 } from "@workspace/cot-engine";
-import type { CategoryHistory, CurvePoint, LatestCounts } from "./hand-sources";
+import type { CategoryHistory, CurvePoint, DailyBars, LatestCounts, SiteHistory } from "./hand-sources";
 import { weeklyLast } from "./sectors-compute";
 import type { DailyCloses } from "./sectors-sources";
 
@@ -236,11 +236,45 @@ export function participationRow(spec: typeof HAND_PARTICIPATION[number], catego
   };
 }
 
+/** Expected ES / NQ day for the current volatility state, in % and in points at the last close. */
+export function rangeRows(state: string | null, bars: Map<"ES" | "NQ", DailyBars>): RangeRow[] {
+  const s = (state === "high" || state === "low" ? state : "normal") as "high" | "normal" | "low";
+  return (["ES", "NQ"] as const).flatMap(market => {
+    const b = bars.get(market);
+    if (!b || b.close.length < 2) return [];
+    const last = b.close.at(-1)!;
+    const daily = b.close.slice(1).map((_, i) => (b.high[i + 1] - b.low[i + 1]) / b.close[i] * 100).slice(-20).sort((x, y) => x - y);
+    const recent = daily.length >= 10 ? (daily[(daily.length - 1) >> 1] + daily[daily.length >> 1]) / 2 : null;
+    const r = HAND_RANGES[market][s];
+    return [{ market, state: s, medianPct: r.median, p80Pct: r.p80, last: round(last, 2)!, medianPts: Math.round(last * r.median / 100), p80Pts: Math.round(last * r.p80 / 100), recent20Pct: round(recent, 2), asOf: b.dates.at(-1)! }];
+  });
+}
+
+/** Core markets whose large speculators sit in the top or bottom 10% of their 3-year range. */
+export function crowdedRows(histories: Map<string, SiteHistory>): CrowdedRow[] {
+  const out: CrowdedRow[] = [];
+  for (const m of CORE_MARKETS) {
+    const h = m.code ? histories.get(m.code)?.filter(r => r.openInterest) : undefined;
+    if (!h || h.length < 60) continue;
+    const spec = h.map(r => ({ date: r.date, v: r.largeTraders / r.openInterest! * 100 }));
+    const comm = h.map(r => ({ date: r.date, v: r.commercialHedgers / r.openInterest! * 100 }));
+    const sp = pct3y(spec), cp = pct3y(comm);
+    if (sp == null || cp == null || (sp > 10 && sp < 90)) continue;
+    const now = spec.at(-1)!;
+    const four = Date.parse(`${now.date}T00:00:00Z`) - 28 * 86_400_000;
+    const prev = [...spec].reverse().find(r => Date.parse(`${r.date}T00:00:00Z`) <= four);
+    out.push({ code: m.code!, symbol: m.symbol, label: m.label, group: m.group, reportDate: now.date, specNetPct: round(now.v)!, specPct3y: sp, commPct3y: cp, chg4w: prev ? round(now.v - prev.v) : null, side: sp >= 90 ? "top" : "bottom" });
+  }
+  return out.sort((a, b) => Math.abs(b.specPct3y - 50) - Math.abs(a.specPct3y - 50));
+}
+
 export type HandInputs = {
   generatedAt: string; priceSource: string;
   prices: Map<string, DailyCloses>;
   curve: CurvePoint[] | null;
   participation: Map<string, { histories: Record<string, CategoryHistory>; counts: LatestCounts }>;
+  rangeBars?: Map<"ES" | "NQ", DailyBars>;
+  siteHistories?: Map<string, SiteHistory>;
 };
 
 export function buildHand(input: HandInputs): HandSnapshot {
@@ -255,11 +289,14 @@ export function buildHand(input: HandInputs): HandSnapshot {
     id: "rates", title: "Rates", state: null, status: "pending", pendingReason: "Treasury yields were unavailable this run.",
     headline: "Rates readings are unavailable this run.", mechanism: "", sectorLine: "", readings: [],
   };
+  const volatility = volatilityCard(spy, input.prices.get("^VIX"), input.prices.get("^VIX3M"));
   return {
     version: 1, generatedAt: input.generatedAt, priceSource: input.priceSource,
     positioningAsOf: participation.map(p => p.reportDate).sort().at(-1)!,
     pricesAsOf: spy.dates.at(-1)!, yieldsAsOf: input.curve?.at(-1)?.date ?? null,
-    cards: [creditCard(input.prices), rates, powerCard(), volatilityCard(spy, input.prices.get("^VIX"), input.prices.get("^VIX3M")), aiPowerCard(input.prices)],
+    cards: [creditCard(input.prices), rates, powerCard(), volatility, aiPowerCard(input.prices)],
     participation,
+    ranges: input.rangeBars ? rangeRows(volatility.state, input.rangeBars) : [],
+    crowded: input.siteHistories ? crowdedRows(input.siteHistories) : [],
   };
 }
