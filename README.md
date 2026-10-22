@@ -15,6 +15,7 @@ Everything runs on Cloudflare and GitHub:
 | CFTC collection | GitHub Actions `cftc-update.yml`, started by the Worker's 10-minute cron | Collects the weekly reports after the Friday release |
 | Sectors snapshot | GitHub Actions `sectors-update.yml`, started on weekdays after 17:30 New York | End-of-day SPDR sector prices, positioning and yields |
 | Invisible Hand numbers | A follow-on step in both workflows above (`hand-cli.ts`) | Weekly macro theme cards and participation rows, refreshed after each CFTC collection and each evening close |
+| Demo account | Same step as the Invisible Hand numbers (`hand-cli.ts`) | Advances the public forward test once per completed week (after the Friday close); stored as the `demo-account` document |
 | Deploys | Cloudflare Workers Builds on every merge to `main` | `pnpm cloudflare:build` then `pnpm cloudflare:publish-built` |
 
 Setup, credentials and Free-plan limits: see [CLOUDFLARE.md](CLOUDFLARE.md).
