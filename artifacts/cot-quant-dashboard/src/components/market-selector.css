@@ -46,6 +46,9 @@
 .ms-check { color:hsl(var(--primary));opacity:0; }
 .ms-opt[aria-selected="true"] .ms-check { opacity:1; }
 
+.ms-advanced { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px;border-bottom:1px solid hsl(var(--border));font-size:11px;color:hsl(var(--muted-foreground));background:hsl(var(--muted) / .45); }
+.ms-advanced .btn { padding:4px 9px;font-size:11px;cursor:pointer;flex:none; }
+.ms-link { font:inherit;color:hsl(var(--primary));background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px; }
 .ms-empty { display:grid;gap:6px;padding:26px 18px;text-align:center;font-size:12px; }
 .ms-empty span { color:hsl(var(--muted-foreground));font-size:11px; }
 .ms-empty-actions { display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px; }

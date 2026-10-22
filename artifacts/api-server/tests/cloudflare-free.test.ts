@@ -116,7 +116,7 @@ test("Actual D1 + REST + GitHub collector: complete both reports, preserve last-
       }
       sourceRequests++;
       if (failCombined) return new Response(null, { status: 503 });
-      const query = url.searchParams.get("query") ?? "";
+      const query = url.searchParams.get("query") ?? url.searchParams.get("$query") ?? "";
       if (query.startsWith("SELECT report_date")) return Response.json([{ report_date_as_yyyy_mm_dd: asOf }]);
       if (query.startsWith("SELECT market_and_exchange_names, cftc_contract_market_code")) return Response.json([{ market_and_exchange_names: market.name, cftc_contract_market_code: market.code }]);
       return Response.json(history.map(r => ({ cftc_contract_market_code: market.code, report_date_as_yyyy_mm_dd: r.date, large_traders: String(r.large_traders), small_traders: String(r.small_traders), commercial_hedgers: String(r.commercial_hedgers), open_interest: String(r.open_interest) })));

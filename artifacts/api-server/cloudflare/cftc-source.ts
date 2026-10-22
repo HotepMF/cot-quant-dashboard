@@ -1,22 +1,36 @@
-import type { RawRow } from "@workspace/cot-engine";
+import { HISTORY_RULES, type RawRow } from "@workspace/cot-engine";
 import type { History, Market, ReportKey } from "./types";
 
 const datasets = { futures: "6dca-aqww", combined: "jun7-fc8e" };
 const quote = (value: string) => `'${value.replace(/'/g, "''")}'`;
 const numeric = (value: unknown) => value == null || value === "" ? Number.NaN : Number(value);
-async function query<T>(report: ReportKey, statement: string, token?: string): Promise<T[]> {
-  const url = new URL(`https://publicreporting.cftc.gov/api/v3/views/${datasets[report]}/query.json`);
-  url.searchParams.set("pageNumber", "1");
-  url.searchParams.set("pageSize", "5000");
-  url.searchParams.set("query", statement);
+async function fetchRows<T>(url: URL, token?: string): Promise<{ status: number; rows?: T[] }> {
   const response = await fetch(url, {
     headers: { Accept: "application/json", ...(token ? { "X-App-Token": token } : {}) },
     signal: AbortSignal.timeout(30_000),
   });
-  if (!response.ok) throw new Error(`CFTC returned HTTP ${response.status}.`);
+  if (!response.ok) return { status: response.status };
   const rows: unknown = await response.json();
   if (!Array.isArray(rows)) throw new Error("Unexpected official CFTC response.");
-  return rows as T[];
+  return { status: response.status, rows: rows as T[] };
+}
+async function query<T>(report: ReportKey, statement: string, token?: string): Promise<T[]> {
+  // The v3 query API requires an app token. Without one, or if it is rejected, the v2 resource
+  // endpoint serves the same public dataset and accepts the identical SoQL statement.
+  if (token) {
+    const url = new URL(`https://publicreporting.cftc.gov/api/v3/views/${datasets[report]}/query.json`);
+    url.searchParams.set("pageNumber", "1");
+    url.searchParams.set("pageSize", "5000");
+    url.searchParams.set("query", statement);
+    const result = await fetchRows<T>(url, token);
+    if (result.rows) return result.rows;
+    if (result.status !== 401 && result.status !== 403) throw new Error(`CFTC returned HTTP ${result.status}.`);
+  }
+  const url = new URL(`https://publicreporting.cftc.gov/resource/${datasets[report]}.json`);
+  url.searchParams.set("$query", statement);
+  const result = await fetchRows<T>(url, token);
+  if (!result.rows) throw new Error(`CFTC returned HTTP ${result.status}.`);
+  return result.rows;
 }
 export async function officialMarkets(report: ReportKey, token?: string) {
   const newest = await query<{ report_date_as_yyyy_mm_dd: string }>(report, "SELECT report_date_as_yyyy_mm_dd ORDER BY report_date_as_yyyy_mm_dd DESC LIMIT 1", token);
@@ -35,18 +49,27 @@ export async function officialMarkets(report: ReportKey, token?: string) {
 export async function officialHistories(report: ReportKey, reportAsOf: string, markets: Market[], token?: string): Promise<Map<string, History>> {
   // Select by contract code, not name: the CFTC renames contracts (e.g. Feb 2022), and a name filter
   // silently drops every observation published under an earlier name. Results stay keyed by today's name.
+  // Predecessor codes (HISTORY_RULES) are read into the same market's history.
   const histories = new Map(markets.map(m => [m.code, new Map<string, RawRow>()]));
-  const codes = markets.map(m => quote(m.code)).join(", ");
+  const owners = new Map<string, Market>();
+  for (const m of markets) {
+    owners.set(m.code, m);
+    for (const code of HISTORY_RULES[m.code]?.predecessors ?? []) owners.set(code, m);
+  }
+  const codes = [...owners.keys()].map(quote).join(", ");
   const projection = "cftc_contract_market_code, report_date_as_yyyy_mm_dd, noncomm_positions_long_all - noncomm_positions_short_all AS large_traders, comm_positions_long_all - comm_positions_short_all AS commercial_hedgers, nonrept_positions_long_all - nonrept_positions_short_all AS small_traders, open_interest_all AS open_interest";
   for (let page = 0; page < 100; page++) {
     const rows = await query<Record<string, string>>(report,
       `SELECT ${projection} WHERE cftc_contract_market_code IN (${codes}) AND report_date_as_yyyy_mm_dd <= ${quote(`${reportAsOf}T00:00:00.000`)} ORDER BY cftc_contract_market_code ASC, report_date_as_yyyy_mm_dd ASC LIMIT 5000 OFFSET ${page * 5000}`, token);
     for (const row of rows) {
-      const history = histories.get(row.cftc_contract_market_code);
-      if (!history) throw new Error("CFTC returned a market outside the requested batch.");
+      const market = owners.get(row.cftc_contract_market_code);
+      if (!market) throw new Error("CFTC returned a market outside the requested batch.");
+      const history = histories.get(market.code)!;
       const n = [row.large_traders, row.small_traders, row.commercial_hedgers].map(numeric);
       if (!row.report_date_as_yyyy_mm_dd || !Number.isFinite(Date.parse(row.report_date_as_yyyy_mm_dd)) || !n.every(Number.isFinite)) throw new Error("Invalid official positioning observation.");
       const date = new Date(row.report_date_as_yyyy_mm_dd).toISOString().slice(0, 10);
+      const trimBefore = HISTORY_RULES[market.code]?.trimBefore;
+      if (trimBefore && date < trimBefore) continue;
       const oi = numeric(row.open_interest);
       const parsed: RawRow = { date, large_traders: n[0], small_traders: n[1], commercial_hedgers: n[2], ...(Number.isFinite(oi) ? { open_interest: oi } : {}) };
       const previous = history.get(date);

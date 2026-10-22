@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getGetCotScreenerQueryKey, useRefreshCotScan } from "@workspace/api-client-react";
 import { loadScreener } from "@/lib/browser-scan";
 import type { CotSignalMarket, GetCotScreenerParams } from "@workspace/api-client-react";
+import { coreAliases } from "@workspace/cot-engine";
 import { buildMarketCatalog, MARKET_SECTORS } from "@/lib/market-catalog";
 import type { MarketSector } from "@/lib/market-catalog";
 import { readLiveReport, useSharedSettings, writeLiveReport } from "@/lib/settings-store";
@@ -59,7 +60,7 @@ export function useScreener() {
   const rows = useMemo<ScanRow[]>(() => {
     const markets = data?.markets ?? [];
     const byName = new Map(markets.map(m => [m.name, m]));
-    return buildMarketCatalog(markets.map(m => ({ name: m.name, code: m.code }))).map(c => {
+    return buildMarketCatalog(markets.map(m => ({ name: m.name, code: m.code })), coreAliases).map(c => {
       const m = byName.get(c.name)!;
       const active = isActive(m);
       const oiAlert = m.status === "ready" && m.oiChange != null && Math.abs(m.oiChange) >= settings.oiThreshold;

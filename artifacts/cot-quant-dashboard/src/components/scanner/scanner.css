@@ -77,3 +77,22 @@
   .sector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .scan-report{width:100%}.scan-settings-head{flex-wrap:wrap}
 }
+
+/* Compact watchlist filters: one search row, one chip row (scrolls sideways on phones). */
+.wl-filters { display:grid;gap:8px;padding:10px 12px;margin-bottom:6px; }
+.wl-row { display:flex;gap:8px;align-items:center;min-width:0; }
+.wl-search { flex:1;min-width:0;padding:0 10px;height:34px;border:1px solid hsl(var(--border));border-radius:6px;background:hsl(var(--card)); }
+.wl-search:focus-within { border-color:hsl(var(--primary) / .6); }
+.wl-select { width:auto;height:34px;padding-top:0;padding-bottom:0;font-size:12px; }
+.wl-filters .sort-pair .icon-btn { height:34px;width:34px; }
+.wl-chips { display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
+.wl-chipset { display:flex;gap:5px;flex:none; }
+.wl-sep { width:1px;height:18px;background:hsl(var(--border));flex:none;margin:0 2px; }
+@media(max-width:760px) {
+  .wl-row { flex-wrap:wrap; }
+  .wl-search { flex:1 1 100%; }
+  .wl-row .wl-select { flex:1;min-width:0; }
+  .wl-search input { font-size:16px; }
+  .wl-chips { flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px 2px; }
+  .wl-chips::-webkit-scrollbar { display:none; }
+}
