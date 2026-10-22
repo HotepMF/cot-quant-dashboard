@@ -3,22 +3,24 @@
   "version": "0.0.0",
   "license": "MIT",
   "packageManager": "pnpm@10.26.1",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
+    "dev": "pnpm --filter @workspace/cot-quant-dashboard run dev",
+    "dev:live": "pnpm --filter @workspace/cot-quant-dashboard run dev:live",
+    "dev:api": "node -e \"require('fs').mkdirSync('artifacts/cot-quant-dashboard/dist/public',{recursive:true})\" && pnpm exec wrangler d1 migrations apply DB --local && pnpm exec wrangler dev",
     "cloudflare:build": "pnpm run typecheck:libs && pnpm --filter @workspace/api-server run typecheck:cloudflare && PORT=5173 BASE_PATH=/ pnpm --filter @workspace/cot-quant-dashboard run build",
     "cloudflare:check": "pnpm run cloudflare:build && pnpm exec wrangler deploy --dry-run --outdir generated-artifacts/cloudflare",
     "cloudflare:deploy": "pnpm run cloudflare:build && pnpm run cloudflare:publish-built",
     "cloudflare:publish-built": "node scripts/cloudflare-preflight.mjs && pnpm exec wrangler d1 migrations apply DB --remote && pnpm exec wrangler deploy",
-    "cloudflare:test": "pnpm --filter @workspace/api-server exec tsx --test tests/cloudflare.test.ts tests/cloudflare-free.test.ts tests/sectors.test.ts",
+    "cloudflare:test": "pnpm --filter @workspace/api-server exec tsx --test tests/cloudflare.test.ts tests/cloudflare-free.test.ts tests/sectors.test.ts tests/signal-rules.test.ts tests/update-schedule.test.mjs",
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --if-present run typecheck"
   },
   "private": true,
-  "dependencies": {
-    "@replit/connectors-sdk": "^0.4.3"
-  },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261019.1",
     "prettier": "^3.9.6",

@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computeRows, defaultSignalSettings, setupScore, type RawRow } from "@workspace/cot-engine";
-import { parseSignalSettings, signalMarket } from "../src/services/cot-screener";
+import { computeRows, defaultSignalSettings, parseSignalSettings, setupScore, signalMarket, type RawRow } from "@workspace/cot-engine";
 
 const reportDate = "2026-10-13";
 const now = Date.parse("2026-10-20T12:00:00Z");

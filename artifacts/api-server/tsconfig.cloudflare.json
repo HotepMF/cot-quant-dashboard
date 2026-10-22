@@ -5,5 +5,5 @@
     "noEmit": true,
     "types": ["@cloudflare/workers-types", "node"]
   },
-  "include": ["cloudflare/**/*.ts", "src/services/cot-signal-model.ts", "src/services/cot-update-schedule.ts"]
+  "include": ["cloudflare/**/*.ts"]
 }
