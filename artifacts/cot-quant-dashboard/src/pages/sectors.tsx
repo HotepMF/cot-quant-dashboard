@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Moon, Sun } from "lucide-react";
-import { POSITIONING_GROUPS, SECTOR_LINKS } from "@workspace/cot-engine";
+import { POSITIONING_GROUPS, SECTOR_LINKS, SECTOR_WATCH } from "@workspace/cot-engine";
 import type { PositioningRow, SectorRow, SectorsSnapshot } from "@workspace/cot-engine";
 import { useTheme } from "@/components/scanner/scanner-shell";
 import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
@@ -124,6 +124,7 @@ const tests: [string, string, string][] = [
   ["Are crowded markets followed by bigger or sharper moves?", "No larger than after strong trends with ordinary positioning", "NO"],
   ["Do rising sectors keep rising?", "No reliable tendency to continue or reverse at any lookback (11 sectors, 1999–2026)", "NO"],
   ["Do unusually strong sectors give it back?", "Leaders 2σ+ above normal trailed SPY the next week, median −0.3%", "TOO SMALL"],
+  ["Does XLE follow the COT filter on energy futures?", "Same direction vs SPY over 4–13 weeks after signals on crude, gasoline and natural gas; small samples, found by testing many links", "SPECULATION"],
 ];
 
 export function SectorsPage() {
@@ -189,7 +190,8 @@ export function SectorsPage() {
         </div>
         <div className="sx-panels">{data.panels.map(p => <section key={p.id} className="card sx-panel" data-testid={`panel-${p.id}`}>
           <div className="sx-head"><span>{p.title.toUpperCase()}</span><b>{p.headline}</b></div>
-          <div className="sx-rd">{p.read.map((t, i) => <p key={i}>{t}</p>)}{p.note && <p className="muted">{p.note}</p>}</div>
+          <div className="sx-rd">{p.read.map((t, i) => <p key={i}>{t}</p>)}{p.note && <p className="muted">{p.note}</p>}
+            {SECTOR_WATCH[p.id as keyof typeof SECTOR_WATCH] && <p className="sx-watch" data-testid={`watch-${p.id}`}><span className="sx-vd">WATCH · SPECULATION</span> {SECTOR_WATCH[p.id as keyof typeof SECTOR_WATCH]}</p>}</div>
         </section>)}</div>
         <footer className="sx-foot">
           Sector performance: ETF vs SPY, dividend-adjusted closes ({data.priceSource}); σ = z-score vs the trailing 156 weeks. Positioning: CFTC Commitments of Traders, Futures Only — Disaggregated ({POSITIONING_GROUPS.disagg.funds.toLowerCase()} vs {POSITIONING_GROUPS.disagg.other.toLowerCase()}) and Traders in Financial Futures ({POSITIONING_GROUPS.tff.funds.toLowerCase()} vs {POSITIONING_GROUPS.tff.other.toLowerCase()}); net % of open interest; percentile = share of the last 156 weekly readings at or below today's. Futures prices are front-month, not roll-adjusted. Yields: U.S. Treasury daily par yield curve. Context for understanding the market, not a forecast or a trading signal. Not investment advice.

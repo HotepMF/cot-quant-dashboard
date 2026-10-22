@@ -95,6 +95,7 @@ export function HowItWorksPage() {
             <li><b>Positioning monitor</b>: where funds sit in their 3-year range, as a percentile. Funds are managed money for commodities and leveraged funds for financial futures, shown against producers or asset managers. The 90th percentile or above, or the 10th or below, is labeled crowded. A low reading can still be a net long.</li>
           </ul>
           <p>Panel text is generated from the numbers each day and describes what is happening, not what comes next.</p>
+          <p><b>Watch notes</b> (labeled Speculation) report co-movement we found between the site's default COT filter on a sector's futures and that sector versus SPY, 2002–2026. Energy is the one consistent link: XLE has tended to move with the filter on crude, gasoline and natural gas. Utilities moved the opposite way to a bullish natural-gas filter. Metals showed nothing for materials or industrials. Samples are small (about 30 signals per market) and we checked many links, so treat these as things to watch, not rules.</p>
         </Section>
 
         <Section id="invisible-hand" title="The Invisible Hand">
