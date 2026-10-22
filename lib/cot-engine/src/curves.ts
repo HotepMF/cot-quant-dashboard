@@ -162,3 +162,24 @@ export function curveGauge(symbol: string, carry: number | null): number | null 
  * deep backwardation 0.951 and deep contango 0.898 against 0.797 for a flat curve. Descriptive, not a signal.
  */
 export const CURVE_VOL_EFFECT = { deepBackwardation: 0.19, deepContango: 0.13 } as const;
+
+export type VolState = "calm" | "normal" | "elevated" | "extreme";
+
+/**
+ * Plain-language volatility state from vol now / the market's 5-year normal. Fixed, round bands chosen for reading,
+ * not tested thresholds: under 0.75x calm, 0.75-1.25x normal, 1.25-1.75x elevated, 1.75x and up extreme.
+ */
+export const VOL_STATES: { state: VolState; from: number; label: string; meaning: string }[] = [
+  { state: "calm", from: 0, label: "Calm", meaning: "Moves are smaller than usual for this market. Quiet markets can wake up quickly." },
+  { state: "normal", from: 0.75, label: "Normal", meaning: "Moves are about the usual size for this market." },
+  { state: "elevated", from: 1.25, label: "Elevated", meaning: "Moves are bigger than usual. Wider stops or a smaller size keep the same risk." },
+  { state: "extreme", from: 1.75, label: "Extreme", meaning: "Moves are close to twice the usual size or more. Expect big swings both ways." },
+];
+
+export function volState(ratio: number | null | undefined) {
+  if (ratio == null || !Number.isFinite(ratio)) return null;
+  return [...VOL_STATES].reverse().find(s => ratio >= s.from)!;
+}
+
+/** Volatility needle 0..1: ratio 0.25x at the left end, 2.25x at the right, so each state is a quarter of the dial. */
+export const volGauge = (ratio: number | null | undefined) => ratio == null || !Number.isFinite(ratio) ? null : Math.max(0, Math.min(1, (ratio - 0.25) / 2));

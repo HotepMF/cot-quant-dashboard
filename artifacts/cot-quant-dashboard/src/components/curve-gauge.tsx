@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { CURVE_CUTOFFS, CURVE_VOL_EFFECT, DEMO_MARKETS, coreMarketByCode, curveGauge, curveKind, curveZone } from "@workspace/cot-engine";
+import { CURVE_CUTOFFS, CURVE_VOL_EFFECT, DEMO_MARKETS, coreMarketByCode, curveGauge, curveKind, curveZone, volGauge, volState } from "@workspace/cot-engine";
 import type { CurveRow, CurveSnapshot, CurveZone } from "@workspace/cot-engine";
 import "./curve-gauge.css";
 
@@ -34,22 +34,31 @@ const monthName = (m: string) => new Date(Date.UTC(Number(m.slice(0, 4)), Number
 export const curveState = (carry: number | null) => carry == null ? "—" : Math.abs(carry) < 0.002 ? "Flat" : carry > 0 ? "Backwardation" : "Contango";
 export const zoneText = (z: CurveZone | null) => z === "deep-backwardation" ? "Deep backwardation for this market" : z === "deep-contango" ? "Deep contango for this market" : z === "normal" ? "Within its usual range" : "No history to compare";
 
-/** Half-dial: left = deep contango, right = deep backwardation, scaled to this market's own 2002-24 history. */
-export function CurveDial({ symbol, carry, size = 190 }: { symbol: string; carry: number | null; size?: number }) {
-  const g = curveGauge(symbol, carry);
+/** Half-dial with colored zones (0..1 along the arc) and a needle at `value`. */
+function Dial({ value, zones, label, size }: { value: number | null; zones: [number, number, string][]; label: string; size: number }) {
   const w = size, h = size * 0.58, cx = w / 2, cy = h - 6, r = w / 2 - 12;
   const pt = (t: number, rad = r) => [cx - rad * Math.cos(Math.PI * t), cy - rad * Math.sin(Math.PI * t)] as const;
   const arc = (a: number, b: number) => { const [x0, y0] = pt(a), [x1, y1] = pt(b); return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`; };
-  // Readings beyond the 5th / 95th percentile pin just inside the ends, so the needle never lies on the baseline.
-  const [nx, ny] = pt(Math.max(0.04, Math.min(0.96, g ?? 0.5)), r - 10);
-  return <svg className="cg-dial" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={`Curve gauge: ${curveState(carry)}, ${zoneText(curveZone(symbol, carry)).toLowerCase()}`}>
-    <path d={arc(0, 0.2)} className="cg-arc cg-contango" />
-    <path d={arc(0.2, 0.8)} className="cg-arc cg-normal" />
-    <path d={arc(0.8, 1)} className="cg-arc cg-back" />
-    {[0.2, 0.8].map(t => { const [x0, y0] = pt(t, r - 8), [x1, y1] = pt(t, r + 8); return <line key={t} x1={x0} y1={y0} x2={x1} y2={y1} className="cg-tick" />; })}
-    {g != null && <line x1={cx} y1={cy} x2={nx} y2={ny} className="cg-needle" />}
+  // Readings beyond the ends pin just inside them, so the needle never lies on the baseline.
+  const [nx, ny] = pt(Math.max(0.04, Math.min(0.96, value ?? 0.5)), r - 10);
+  return <svg className="cg-dial" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img" aria-label={label}>
+    {zones.map(([a, b, cls]) => <path key={a} d={arc(a, b)} className={`cg-arc ${cls}`} />)}
+    {zones.slice(1).map(([t]) => { const [x0, y0] = pt(t, r - 8), [x1, y1] = pt(t, r + 8); return <line key={t} x1={x0} y1={y0} x2={x1} y2={y1} className="cg-tick" />; })}
+    {value != null && <line x1={cx} y1={cy} x2={nx} y2={ny} className="cg-needle" />}
     <circle cx={cx} cy={cy} r={5} className="cg-hub" />
   </svg>;
+}
+
+/** Curve dial: left = deep contango, right = deep backwardation, scaled to this market's own 2002-24 history. */
+export function CurveDial({ symbol, carry, size = 190 }: { symbol: string; carry: number | null; size?: number }) {
+  return <Dial value={curveGauge(symbol, carry)} size={size} label={`Curve gauge: ${curveState(carry)}, ${zoneText(curveZone(symbol, carry)).toLowerCase()}`}
+    zones={[[0, 0.2, "cg-contango"], [0.2, 0.8, "cg-normal"], [0.8, 1, "cg-back"]]} />;
+}
+
+/** Volatility dial: calm, normal, elevated, extreme, a quarter each (0.25x to 2.25x the 5-year normal). */
+export function VolDial({ ratio, size = 190 }: { ratio: number | null | undefined; size?: number }) {
+  return <Dial value={volGauge(ratio)} size={size} label={`Volatility gauge: ${volState(ratio)?.label ?? "no reading"}`}
+    zones={[[0, 0.25, "cg-v-calm"], [0.25, 0.5, "cg-v-normal"], [0.5, 0.75, "cg-v-elevated"], [0.75, 1, "cg-v-extreme"]]} />;
 }
 
 /** Tiny line of the front pair's daily EOD spread (front minus second), with the zero line. */
@@ -82,17 +91,31 @@ export function CurvePanel({ code }: { code?: string }) {
   const symbol = core?.symbol.split(" ")[0];
   if (!symbol || (!CURVE_CUTOFFS[symbol] && symbol !== "LBR")) return null;
   const row = query.data?.markets.find(m => m.symbol === symbol);
-  const head = <div className="card-head"><div><h2 className="panel-title">Futures curve</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Backwardation vs contango · end of day{query.data ? ` · ${query.data.asOf}` : ""}</div></div><span className="cg-label">Measured · not a signal</span></div>;
+  const head = <div className="card-head"><div><h2 className="panel-title">Curve &amp; volatility</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Backwardation vs contango, and how big moves are now · end of day{query.data ? ` · ${query.data.asOf}` : ""}</div></div><span className="cg-label">Measured · not a signal</span></div>;
   if (!row) return <div className="card section cg-card" data-testid="curve-panel">{head}<div className="card-body subtle" style={{ fontSize: 12 }}>{query.isLoading ? "Loading the curve…" : "No curve saved for this market yet. The archive updates each weekday evening."}</div></div>;
   const zone = curveZone(symbol, row.carry), [near, far] = row.contracts, pv = POINT_VALUE.get(symbol);
+  const vs = volState(row.vol?.ratio);
+  // A typical day now: one daily standard deviation, in percent and in dollars per contract at the front price.
+  const day = row.vol ? row.vol.now / Math.sqrt(252) : null;
   return <div className="card section cg-card" data-testid="curve-panel">
     {head}
     <div className="card-body cg-body">
-      <div className="cg-left">
-        <CurveDial symbol={symbol} carry={row.carry} />
-        <div className="cg-ends"><span>Contango</span><span>Backwardation</span></div>
-        <div className={`cg-state cg-${zone ?? "none"}`} data-testid="curve-state">{curveState(row.carry)}</div>
-        <div className="subtle cg-zone">{zoneText(zone)}</div>
+      <div className="cg-dials">
+        <div className="cg-left">
+          <div className="eyebrow cg-dial-title">Curve</div>
+          <CurveDial symbol={symbol} carry={row.carry} />
+          <div className="cg-ends"><span>Contango</span><span>Backwardation</span></div>
+          <div className={`cg-state cg-${zone ?? "none"}`} data-testid="curve-state">{curveState(row.carry)}</div>
+          <div className="subtle cg-zone">{zoneText(zone)}</div>
+        </div>
+        <div className="cg-left">
+          <div className="eyebrow cg-dial-title">Volatility</div>
+          <VolDial ratio={row.vol?.ratio} />
+          <div className="cg-ends"><span>Calm</span><span>Extreme</span></div>
+          <div className={`cg-state cg-v-${vs?.state ?? "none"}-text`} data-testid="vol-state">{vs?.label ?? (row.vol ? `${(row.vol.now * 100).toFixed(0)}% a year` : "—")}</div>
+          <div className="subtle cg-zone">{vs ? `${row.vol!.ratio!.toFixed(2)}× its usual` : "No 5-year normal to compare"}{day != null ? <> · typical day ±{(day * 100).toFixed(1)}%{pv ? ` (≈ $${Math.round(day * near.close * pv).toLocaleString()})` : ""}</> : null}</div>
+          {vs && <div className="cg-meaning">{vs.meaning}</div>}
+        </div>
       </div>
       <div className="cg-stats">
         <div className="statline"><span className="subtle">Front · second</span><b className="mono">{monthName(near.month)} {near.close.toLocaleString()} · {monthName(far.month)} {far.close.toLocaleString()}</b></div>
@@ -119,7 +142,7 @@ export function StretchedCurves() {
   return <section className="card section cg-card" data-testid="stretched-curves">
     <div className="card-head"><div><h2 className="panel-title">Stretched curves</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Commodities in deep backwardation or deep contango for their own 2002-24 history, plus VIX · {query.data.asOf}</div></div><span className="cg-label">Measured · not a signal</span></div>
     <div className="card-body"><div className="sx-scroll"><table className="sx-table">
-      <thead><tr><th>Market</th><th>Curve</th><th className="num">Spread</th><th className="num">Carry / yr</th><th className="num">Vol now</th><th className="num">vs normal</th><th>Gauge</th></tr></thead>
+      <thead><tr><th>Market</th><th>Curve</th><th className="num">Spread</th><th className="num">Carry / yr</th><th className="num">Vol now</th><th>Volatility</th><th>Gauge</th></tr></thead>
       <tbody>{rows.map(m => {
         const z = curveZone(m.symbol, m.carry);
         return <tr key={m.symbol} data-testid={`row-curve-${m.symbol}`}>
@@ -128,7 +151,7 @@ export function StretchedCurves() {
           <td className="num">{m.spread == null ? "—" : num(m.spread)}</td>
           <td className="num">{m.carry == null ? "—" : pct(m.carry)}</td>
           <td className="num">{m.vol ? `${(m.vol.now * 100).toFixed(0)}%` : "—"}</td>
-          <td className="num">{m.vol?.ratio != null ? `${m.vol.ratio.toFixed(2)}×` : "—"}</td>
+          <td className={`cg-v-${volState(m.vol?.ratio)?.state ?? "none"}-text`}>{volState(m.vol?.ratio) ? `${volState(m.vol?.ratio)!.label} · ${m.vol!.ratio!.toFixed(2)}×` : "—"}</td>
           <td><CurveDial symbol={m.symbol} carry={m.carry} size={64} /></td>
         </tr>;
       })}</tbody>

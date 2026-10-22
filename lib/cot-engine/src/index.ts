@@ -124,7 +124,7 @@ export { HAND_CATEGORIES, HAND_FOOTER, HAND_PARTICIPATION, HAND_POWER_PRODUCERS,
 export type { CrowdedRow, HandCard, HandCardId, HandReport, HandSnapshot, ParticipationRow, RangeRow, Reading } from "./invisible-hand";
 export { CALENDAR_THROUGH, EVENT_EFFECTS, eventTags, marketEvents } from "./calendar";
 export type { EventKind, EventTags, MarketEvent, RangeEffect } from "./calendar";
-export { CURVE_CUTOFFS, CURVE_DEPTH, CURVE_MARKETS, CURVE_VOL_EFFECT, curveCandidates, curveCarry, curveGauge, curveKind, curveSpread, curveZone, realisedVol } from "./curves";
-export type { CurveContract, CurvePairHistory, CurveRow, CurveSnapshot, CurveZone } from "./curves";
+export { CURVE_CUTOFFS, CURVE_DEPTH, CURVE_MARKETS, CURVE_VOL_EFFECT, curveCandidates, curveCarry, curveGauge, curveKind, curveSpread, curveZone, realisedVol, VOL_STATES, volGauge, volState } from "./curves";
+export type { CurveContract, CurvePairHistory, CurveRow, CurveSnapshot, CurveZone, VolState } from "./curves";
 export { DEMO_MARKETS, DEMO_RULES_VERSION, DEMO_STATE_VERSION, DEMO_START_BALANCE, DEMO_TARGET_SIGMA, advanceDemo, emptyDemo, stepMarket, triggerPattern, weeklySigma } from "./demo";
 export type { DemoMarketState, DemoOrder, DemoPayload, DemoPosition, DemoState, DemoTrade, WeekBar } from "./demo";

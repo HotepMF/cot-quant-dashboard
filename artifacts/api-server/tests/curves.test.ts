@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CURVE_MARKETS, DEMO_MARKETS, curveCandidates, curveCarry, curveGauge, curveZone, realisedVol } from "@workspace/cot-engine";
+import { CURVE_MARKETS, DEMO_MARKETS, curveCandidates, curveCarry, curveGauge, curveZone, realisedVol, volGauge, volState } from "@workspace/cot-engine";
 
 const market = (symbol: string) => CURVE_MARKETS.find(m => m.symbol === symbol)!;
 
@@ -41,4 +41,15 @@ test("Realised vol: annualised from daily log moves; too little data gives null"
   const v = realisedVol([100, ...Array.from({ length: 20 }, (_, i) => (i % 2 ? 100 : 101))]);
   assert.ok(v != null && v > 0.1 && v < 0.2, `alternating 1% moves ≈ 16% a year, got ${v}`);
   assert.equal(realisedVol([100, 101, 100, 101, 100]), null);
+});
+
+test("Volatility gauge: plain-language states from vol now vs the 5-year normal", () => {
+  assert.equal(volState(0.69)?.label, "Calm");
+  assert.equal(volState(0.75)?.label, "Normal");
+  assert.equal(volState(1.3)?.label, "Elevated");
+  assert.equal(volState(2.4)?.label, "Extreme");
+  assert.equal(volState(null), null);
+  assert.equal(volGauge(0.25), 0);
+  assert.equal(volGauge(1.25), 0.5, "the normal / elevated boundary sits at the top of the dial");
+  assert.equal(volGauge(9), 1);
 });

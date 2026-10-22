@@ -1,6 +1,9 @@
 /* Futures curve gauge: contango (cool) on the left, backwardation (warm) on the right, the usual range muted. */
-.cg-card { --cg-contango: 209 52% 50%; --cg-back: 28 78% 50%; }
-.cg-body { display: grid; grid-template-columns: 220px 1fr; gap: 22px; align-items: start; }
+.cg-card { --cg-contango: 209 52% 50%; --cg-back: 28 78% 50%; --cg-calm: 199 45% 55%; --cg-elev: 38 85% 52%; --cg-ext: 4 70% 52%; }
+.cg-body { display: grid; gap: 18px; }
+.cg-dials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.cg-dial-title { margin-bottom: 6px; }
+.cg-meaning { font-size: 12px; text-align: center; margin-top: 6px; max-width: 260px; }
 .cg-left { display: grid; justify-items: center; }
 .cg-dial { display: block; max-width: 100%; height: auto; }
 .cg-arc { fill: none; stroke-width: 12; }
@@ -10,7 +13,7 @@
 .cg-tick { stroke: hsl(var(--card)); stroke-width: 2; }
 .cg-needle { stroke: hsl(var(--foreground)); stroke-width: 3; stroke-linecap: round; }
 .cg-hub { fill: hsl(var(--foreground)); }
-.cg-ends { display: flex; justify-content: space-between; width: 190px; font: 9px var(--app-font-mono); text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+.cg-ends { display: flex; justify-content: space-between; width: 100%; max-width: 190px; font: 9px var(--app-font-mono); text-transform: uppercase; letter-spacing: .06em; color: hsl(var(--muted-foreground)); margin-top: 2px; }
 .cg-state { font: 700 17px var(--app-font-serif, inherit); margin-top: 8px; }
 .cg-zone { font-size: 11px; margin-top: 2px; text-align: center; }
 .cg-deep-backwardation { color: hsl(var(--cg-back)); font-weight: 600; }
@@ -27,6 +30,14 @@
 .cg-down { stroke: hsl(var(--cg-contango)); }
 .cg-note { margin-top: 4px; font-size: 12px; }
 .cg-card .sx-table .cg-dial { margin: -4px 0; }
-@media (max-width: 720px) {
-  .cg-body { grid-template-columns: 1fr; }
+.cg-v-calm { stroke: hsl(var(--cg-calm)); }
+.cg-v-normal { stroke: hsl(var(--primary)); }
+.cg-v-elevated { stroke: hsl(var(--cg-elev)); }
+.cg-v-extreme { stroke: hsl(var(--cg-ext)); }
+.cg-v-calm-text { color: hsl(var(--cg-calm)); font-weight: 600; }
+.cg-v-normal-text { color: hsl(var(--primary)); font-weight: 600; }
+.cg-v-elevated-text { color: hsl(var(--cg-elev)); font-weight: 600; }
+.cg-v-extreme-text { color: hsl(var(--cg-ext)); font-weight: 600; }
+@media (max-width: 520px) {
+  .cg-dials { grid-template-columns: 1fr; }
 }
