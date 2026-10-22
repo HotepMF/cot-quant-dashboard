@@ -10,7 +10,7 @@ const side = (d: number) => d > 0 ? "Long" : "Short";
 
 function Orders({ rows }: { rows: [string, DemoOrder][] }) {
   return <div className="sx-scroll"><table className="sx-table da-table">
-    <thead><tr><th>Mkt</th><th>Side</th><th>Setup</th><th className="num">Order</th><th className="num">Stop</th><th className="num">Target ({DEMO_TARGET_SIGMA}σ)</th><th className="num">Risk / contract</th></tr></thead>
+    <thead><tr><th>Mkt</th><th>Side</th><th>Setup</th><th className="num">Order</th><th className="num">Stop</th><th className="num" style={{ textTransform: "none" }}>TARGET ({DEMO_TARGET_SIGMA}σ)</th><th className="num">Risk / contract</th></tr></thead>
     <tbody>{rows.map(([code, o]) => {
       const m = byCode.get(code)!;
       return <tr key={code} data-testid={`row-demo-order-${m.symbol}`}>
