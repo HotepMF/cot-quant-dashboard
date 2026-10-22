@@ -116,6 +116,7 @@ export interface CotSignalSettings {
   oiThreshold: number;
   participant: string;
   signalMode: string;
+  zMethod: string;
 }
 
 export type CotSignalMarketStatus = typeof CotSignalMarketStatus[keyof typeof CotSignalMarketStatus];
@@ -272,6 +273,7 @@ changeEnabled?: boolean;
 oiThreshold?: number;
 participant?: GetCotScreenerParticipant;
 signalMode?: GetCotScreenerSignalMode;
+zMethod?: GetCotScreenerZMethod;
 };
 
 export type GetCotScreenerReport = typeof GetCotScreenerReport[keyof typeof GetCotScreenerReport];
@@ -298,5 +300,13 @@ export const GetCotScreenerSignalMode = {
   'Z-Score_Only': 'Z-Score Only',
   COT_Confluence: 'COT Confluence',
   'Both_(AND_gate)': 'Both (AND gate)',
+} as const;
+
+export type GetCotScreenerZMethod = typeof GetCotScreenerZMethod[keyof typeof GetCotScreenerZMethod];
+
+
+export const GetCotScreenerZMethod = {
+  'Standard_Z-Score': 'Standard Z-Score',
+  Open_Interest_Normalization: 'Open Interest Normalization',
 } as const;
 

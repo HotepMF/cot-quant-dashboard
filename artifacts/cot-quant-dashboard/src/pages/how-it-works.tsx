@@ -15,7 +15,12 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 export function HowItWorksPage() {
   const [isDark, setIsDark] = useTheme();
-  useEffect(() => { window.scrollTo(0, 0); document.title = "How it works · COT Quant"; }, []);
+  useEffect(() => {
+    document.title = "How it works · COT Quant";
+    // Links like /how-it-works#model open at that section; otherwise start at the top.
+    const target = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null;
+    if (target) target.scrollIntoView({ block: "start" }); else window.scrollTo(0, 0);
+  }, []);
   const thin = CORE_MARKETS.filter(m => m.quality === "thin").map(m => m.symbol).join(", ");
 
   return <div className="shell">
@@ -55,11 +60,22 @@ export function HowItWorksPage() {
         <Section id="reading" title="Reading the site">
           <ul>
             <li><b>Net position</b>: longs minus shorts for each group.</li>
-            <li><b>Z-score</b>: how far today's net position sits from its average over the lookback (63 weeks by default), in standard deviations. ±2 marks an extreme.</li>
+            <li><b>Z-score</b>: how far today's net position sits from its average over the lookback (16 weeks by default, using net as a share of open interest; see The default model), in standard deviations. ±2 marks an extreme.</li>
             <li><b>Cycle rank</b>: where today's net position sits between the lowest (0%) and highest (100%) reading in the market's full history.</li>
             <li><b>Confluence</b>: commercials and large traders at opposite extremes of their cycle ranks at the same time.</li>
           </ul>
           <p>Signals and setups are <b>mechanical rule states</b>, not recommendations.</p>
+        </Section>
+
+        <Section id="model" title="The default model">
+          <p>Market detail, Sector signals and Signal watchlist use the same rules as the TradingView indicator "Commitment of Traders: Total Enhanced + OI". Since Oct 2026 the site default is <b>Both (AND gate)</b> on <b>Commercial Hedgers</b>, with <b>OI-normalized Z</b> (each week's net position divided by that week's open interest) over <b>16 weeks</b>, a Z threshold of <b>2.0</b> and a confluence cycle threshold of <b>65%</b>. You can change any setting; the site remembers yours.</p>
+          <p><b>Why these settings.</b> We tested 1,067 combinations (lookbacks 16, 32, 48 and 64; Z 1.5–2.5; confluence 50–100; standard and OI-normalized) on 42 core markets, 2002–2026, choosing on 2002–2013 and checking on 2014–2026:</p>
+          <ul>
+            <li>No setting passed both periods, and the grid as a whole did not beat random timing. The previous default (COT Confluence, 63 weeks) showed nothing.</li>
+            <li>One area led in every test: the AND gate with OI-normalized Z over 16 weeks. Used as a filter for weekly bar-pattern entries (2-2, 3-2, failed 2, 3), it averaged +0.14R per trade with a 2σ target in both 2002–2013 and 2014–2026, before costs, over about 450 trades.</li>
+            <li>Longer lookbacks (32, 48, 64) did not show it, and keeping the filter open after the signal ended diluted it.</li>
+          </ul>
+          <p>That makes it our <b>best-tested setting, labeled Speculation</b>: it was found by searching, so it is not validated. It will be forward-tested in a public demo account (coming soon), with frozen rules and every loss shown. Positioning still does not time moves by itself; read setups as context, not instructions.</p>
         </Section>
 
         <Section id="markets" title="Which markets">

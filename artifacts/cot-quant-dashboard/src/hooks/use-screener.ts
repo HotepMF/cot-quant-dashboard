@@ -39,6 +39,7 @@ export function useScreener() {
     oiThreshold: settings.oiThreshold,
     participant: settings.participant as GetCotScreenerParams["participant"],
     signalMode: settings.signalMode as GetCotScreenerParams["signalMode"],
+    zMethod: settings.zMethod as GetCotScreenerParams["zMethod"],
   };
   const queryKey = getGetCotScreenerQueryKey(params);
   const qc = useQueryClient();

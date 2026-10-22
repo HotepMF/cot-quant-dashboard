@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { defaultSignalSettings } from "@workspace/cot-engine";
+import { defaultSignalSettings, previousDefaultSignalSettings } from "@workspace/cot-engine";
 import type { SignalSettings } from "@workspace/cot-engine";
 
 /** UI settings extend the shared engine settings so detail and scanner stay on one rule set. */
@@ -13,6 +13,11 @@ export const STORAGE_SETTINGS = "cot-quant-settings-v1";
 export const STORAGE_SOURCE = "cot-quant-source-selection-v1";
 export const STORAGE_SOURCE_MODE = "cot-quant-source-mode";
 export const STORAGE_THEME = "cot-quant-theme-v2";
+/** Bumped when the site's default signal model changes; saved models from before are moved to the new default once. */
+export const MODEL_VERSION = 2;
+export const STORAGE_MODEL_VERSION = "cot-quant-model-version";
+export const STORAGE_PREVIOUS_MODEL = "cot-quant-previous-model";
+const MODEL_KEYS = Object.keys(defaultSignalSettings) as (keyof typeof defaultSignalSettings)[];
 
 export const initialSettings: Settings = {
   ...defaultSignalSettings,
@@ -22,7 +27,17 @@ export const initialSettings: Settings = {
 
 function load(): Settings {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_SETTINGS) ?? "{}");
+    let saved = JSON.parse(localStorage.getItem(STORAGE_SETTINGS) ?? "{}");
+    // One-time move to the Oct 2026 default model; the visitor's previous model is kept so it can be restored.
+    if (Number(localStorage.getItem(STORAGE_MODEL_VERSION)) < MODEL_VERSION) {
+      if (Object.keys(saved).length) {
+        const previous = Object.fromEntries(MODEL_KEYS.map(k => [k, saved[k] ?? previousDefaultSignalSettings[k]]));
+        localStorage.setItem(STORAGE_PREVIOUS_MODEL, JSON.stringify(previous));
+        saved = { ...saved, ...defaultSignalSettings };
+        localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(saved));
+      }
+      localStorage.setItem(STORAGE_MODEL_VERSION, String(MODEL_VERSION));
+    }
     const savedReport = saved.reportType;
     return {
       ...initialSettings, ...saved,
@@ -50,6 +65,14 @@ function subscribe(listener: () => void) {
 export function useSharedSettings(): [Settings, typeof setSharedSettings] {
   const value = useSyncExternalStore(subscribe, () => current, () => current);
   return [value, setSharedSettings];
+}
+
+/** The model a returning visitor had before the default changed, if any. */
+export function previousModel(): Partial<Settings> | null {
+  try { return JSON.parse(localStorage.getItem(STORAGE_PREVIOUS_MODEL) ?? "null"); } catch { return null; }
+}
+export function dismissPreviousModel() {
+  try { localStorage.removeItem(STORAGE_PREVIOUS_MODEL); } catch { /* storage unavailable */ }
 }
 
 export type LiveReport = "futures" | "combined";
