@@ -87,7 +87,6 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
-    if (selected && !curatedMarketByCode.has(selected.code)) setAdvanced(true);
     const idx = flat.findIndex(m => m.name === value);
     setActive(idx >= 0 ? idx : 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
