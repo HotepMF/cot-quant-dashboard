@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
-import { CORE_GROUPS, CORE_MARKETS, SPECIALTY_MARKETS, coreAliases, curatedMarketByCode } from "@workspace/cot-engine";
+import { CONSOLIDATED_COMPONENTS, CORE_GROUPS, CORE_MARKETS, SPECIALTY_MARKETS, coreAliases, curatedMarketByCode } from "@workspace/cot-engine";
 import { MARKET_SECTORS, buildMarketCatalog, filterMarketCatalog } from "@/lib/market-catalog";
 import type { CatalogMarket, MarketSector } from "@/lib/market-catalog";
 import "./market-selector.css";
@@ -255,6 +255,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
                   const i = running;
                   const isSel = m.name === value;
                   const core = advanced ? undefined : curatedMarketByCode.get(m.code);
+                  const partOf = advanced ? curatedMarketByCode.get(CONSOLIDATED_COMPONENTS[m.code] ?? "") : undefined;
                   return (
                     <div
                       key={`${m.code}:${m.name}`}
@@ -275,6 +276,7 @@ export function MarketSelector({ markets, value, onChange, disabled, loading }: 
                           {core ? <><b className="mono">{core.symbol}</b> {core.label}{core.quality === "thin" && <span className="quality-pill" title={core.note}>thin</span>}</> : m.label}
                         </span>
                         <span className="ms-opt-meta">{core ? `${m.label} · ${m.exchange}` : m.exchange}</span>
+                        {partOf && <span className="ms-opt-note">Part of {partOf.symbol} · {partOf.label}, the line the site uses</span>}
                       </span>
                       <span className="ms-opt-code">{m.code}</span>
                       <Check size={13} className="ms-check" aria-hidden />

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Activity, AlertTriangle, BarChart3, ChevronDown, Clock3, Info, LayoutGrid, ListOrdered, Moon, RefreshCw, Sun } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, ChevronDown, CircleHelp, Clock3, Info, LayoutGrid, ListOrdered, Moon, RefreshCw, Sun } from "lucide-react";
 import { STORAGE_THEME, useSharedSettings } from "@/lib/settings-store";
 import type { Settings } from "@/lib/settings-store";
 import type { useScreener } from "@/hooks/use-screener";
@@ -15,6 +15,7 @@ const links = [
   { href: "/", label: "Market detail", short: "Detail", icon: BarChart3 },
   { href: "/sector-signals", label: "Sector signals", short: "Sectors", icon: LayoutGrid },
   { href: "/signal-watchlist", label: "Signal watchlist", short: "Watchlist", icon: ListOrdered },
+  { href: "/how-it-works", label: "How it works", short: "Info", icon: CircleHelp },
 ];
 
 function useTheme() {
@@ -25,6 +26,8 @@ function useTheme() {
   }, [isDark]);
   return [isDark, setIsDark] as const;
 }
+
+export { links as workspaceLinks, useTheme };
 
 export function ScannerShell({ eyebrow, title, lede, screener, children }: { eyebrow: string; title: string; lede: string; screener: Screener; children: ReactNode }) {
   const [location] = useLocation();

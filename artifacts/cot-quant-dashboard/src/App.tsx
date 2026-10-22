@@ -8,12 +8,13 @@ import Papa from "papaparse";
 import { MarketSelector } from "@/components/market-selector";
 import { CftcUpdateStatus } from "@/components/cftc-update-status";
 import { Link, Route, Switch } from "wouter";
-import { computeRows } from "@workspace/cot-engine";
+import { CONSOLIDATED_COMPONENTS, computeRows } from "@workspace/cot-engine";
 import type { RawRow } from "@workspace/cot-engine";
 import { useSharedSettings, STORAGE_SOURCE_MODE } from "@/lib/settings-store";
 import type { Settings } from "@/lib/settings-store";
 import { SectorSignalsPage } from "@/pages/sector-signals";
 import { SignalWatchlistPage } from "@/pages/signal-watchlist";
+import { HowItWorksPage } from "@/pages/how-it-works";
 import NotFound from "@/pages/not-found";
 import {
   Activity, BarChart3, CircleHelp, Download, FileUp, Moon, Printer, RefreshCw,
@@ -51,6 +52,7 @@ const DEMO_ROWS = makeDemo();
 const STORAGE_DATA = "cot-quant-local-rows-v1";
 const STORAGE_THEME = "cot-quant-theme-v2";
 const STORAGE_SOURCE = "cot-quant-source-selection-v1";
+const STORAGE_CONSOLIDATED_DEFAULT = "cot-quant-consolidated-default-v1";
 const sections = [
   { id: "summary", label: "Market overview", icon: BarChart3 },
   { id: "positioning", label: "Positioning", icon: Waves },
@@ -242,6 +244,15 @@ function Dashboard() {
     if (effectiveMarket && selectedMarket !== effectiveMarket.name) setSelectedMarket(effectiveMarket.name);
   }, [effectiveMarket, selectedMarket]);
   useEffect(() => {
+    // One time: a saved E-mini / micro / Dow x$5 selection (the old default) moves to its consolidated line,
+    // which is what the site leads with. Choosing a single contract again afterwards is kept.
+    if (!marketList.length || !selectedMarket) return;
+    try { if (localStorage.getItem(STORAGE_CONSOLIDATED_DEFAULT)) return; localStorage.setItem(STORAGE_CONSOLIDATED_DEFAULT, "1"); } catch { return; }
+    const target = CONSOLIDATED_COMPONENTS[marketList.find(m => m.name === selectedMarket)?.code ?? ""];
+    const replacement = target && marketList.find(m => m.code === target);
+    if (replacement) setSelectedMarket(replacement.name);
+  }, [marketList, selectedMarket]);
+  useEffect(() => {
     try {
       localStorage.setItem(STORAGE_SOURCE, liveReport);
       localStorage.setItem(`${STORAGE_SOURCE}:market`, selectedMarket);
@@ -364,6 +375,7 @@ function Dashboard() {
       <nav style={{ display: "grid", gap: 3 }}>
         <Link href="/sector-signals" className="nav-link" data-testid="nav-sector-signals"><LayoutGrid size={16} />Sector signals</Link>
         <Link href="/signal-watchlist" className="nav-link" data-testid="nav-signal-watchlist"><ListOrdered size={16} />Signal watchlist</Link>
+        <Link href="/how-it-works" className="nav-link" data-testid="nav-how-it-works"><CircleHelp size={16} />How it works</Link>
       </nav>
       <div style={{ marginTop: "auto", borderTop: "1px solid hsl(var(--sidebar-border))", padding: "18px 8px 0" }}>
         <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)" }}>Data mode</div>
@@ -627,6 +639,7 @@ function Dashboard() {
       {sections.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-link ${activeSection === id ? "active" : ""}`} onClick={() => navigate(id)} aria-label={label} data-testid={`mobile-nav-${id}`}><Icon size={16} /><span>{label.split(" ")[0]}</span></button>)}
       <Link href="/sector-signals" className="nav-link" aria-label="Sector signals" data-testid="mobile-nav-sector-signals"><LayoutGrid size={16} /><span>Sectors</span></Link>
       <Link href="/signal-watchlist" className="nav-link" aria-label="Signal watchlist" data-testid="mobile-nav-signal-watchlist"><ListOrdered size={16} /><span>Watchlist</span></Link>
+      <Link href="/how-it-works" className="nav-link" aria-label="How it works" data-testid="mobile-nav-how-it-works"><CircleHelp size={16} /><span>Info</span></Link>
     </nav>
   </div>;
 }
@@ -636,6 +649,7 @@ function App() {
     <Route path="/" component={Dashboard} />
     <Route path="/sector-signals" component={SectorSignalsPage} />
     <Route path="/signal-watchlist" component={SignalWatchlistPage} />
+    <Route path="/how-it-works" component={HowItWorksPage} />
     <Route component={NotFound} />
   </Switch>;
 }

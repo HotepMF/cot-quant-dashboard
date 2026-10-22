@@ -96,3 +96,14 @@
   .wl-chips { flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px 2px; }
   .wl-chips::-webkit-scrollbar { display:none; }
 }
+
+/* How it works */
+.hiw-toc { display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px; }
+.hiw-toc .ms-chip { text-decoration:none; }
+.hiw-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start; }
+.hiw-section { scroll-margin-top:16px; }
+.hiw-body { display:grid;gap:10px;font-size:13px;line-height:1.6;color:hsl(var(--foreground) / .9); }
+.hiw-body p,.hiw-body ul { margin:0; }
+.hiw-body ul { padding-left:18px;display:grid;gap:6px; }
+.hiw-body b { font-weight:650; }
+@media(max-width:1050px) { .hiw-grid { grid-template-columns:minmax(0,1fr); } }
