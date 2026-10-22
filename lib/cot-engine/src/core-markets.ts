@@ -94,6 +94,15 @@ export const SPECIALTY_MARKETS: CoreMarket[] = [
 export const coreMarketByCode = new Map(CORE_MARKETS.filter(m => m.code).map(m => [m.code!, m]));
 /** Core plus specialty: everything the picker shows without an advanced search. */
 export const curatedMarketByCode = new Map([...CORE_MARKETS, ...SPECIALTY_MARKETS].filter(m => m.code).map(m => [m.code!, m]));
+/**
+ * Single contracts that the CFTC also publishes inside a consolidated line (micros counted at one-tenth size).
+ * The site leads with the consolidated line; the single contracts stay reachable in advanced search.
+ */
+export const CONSOLIDATED_COMPONENTS: Record<string, string> = {
+  "13874A": "13874+", "13874U": "13874+",
+  "209742": "20974+", "209747": "20974+",
+  "124603": "12460+", "124608": "12460+",
+};
 /** Extra search terms for a market's official code: its watchlist symbol and plain-English label. */
 export const coreAliases = (code: string) => { const m = curatedMarketByCode.get(code); return m ? `${m.symbol} ${m.label}` : ""; };
 

@@ -42,6 +42,7 @@
 .ms-opt-name { font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .ms-opt[aria-selected="true"] .ms-opt-name { font-weight:650;color:hsl(var(--primary)); }
 .ms-opt-meta { font-size:10px;color:hsl(var(--muted-foreground)); }
+.ms-opt-note { font-size:10px;color:hsl(var(--primary)); }
 .ms-opt-code { font:10px var(--app-font-mono);color:hsl(var(--muted-foreground)); }
 .ms-check { color:hsl(var(--primary));opacity:0; }
 .ms-opt[aria-selected="true"] .ms-check { opacity:1; }
