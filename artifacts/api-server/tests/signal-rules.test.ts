@@ -54,6 +54,10 @@ test("missing, failed, short and stale histories never masquerade as active or n
     assert.ok(result.message);
   }
   assert.equal(signalMarket(market, { rows: history(), error: null }, reportDate, defaultSignalSettings, now + 14 * 86_400_000).status, "stale");
+  // The report stays current through the next Friday's release (day 10 from the Tuesday as-of date), overdue from day 11.
+  const asOf = Date.parse(`${reportDate}T00:00:00Z`);
+  assert.equal(signalMarket(market, { rows: history(), error: null }, reportDate, defaultSignalSettings, asOf + 10.6 * 86_400_000).status, "ready", "Friday before the release is not overdue");
+  assert.equal(signalMarket(market, { rows: history(), error: null }, reportDate, defaultSignalSettings, asOf + 11 * 86_400_000).status, "stale");
 });
 test("ambiguous threshold boundary does not arbitrarily rank a bullish setup", () => {
   const rows = history().map(row => ({ ...row, commercial_hedgers: 5, large_traders: 5, small_traders: 5 }));

@@ -36,9 +36,11 @@ export function signalMarket(
 ) {
   const rows = history?.rows ?? [];
   const latestDate = rows.at(-1)?.date ?? null;
-  const oldReport = Math.floor((now - Date.parse(`${reportAsOf}T00:00:00Z`)) / 86_400_000) > 9;
+  // A Tuesday report is current until the next one is published on Friday (day 10, 3:30 p.m. ET); it counts as
+  // overdue only from day 11, so the Thursday-night-to-Friday wait no longer blanks every setup.
+  const oldReport = Math.floor((now - Date.parse(`${reportAsOf}T00:00:00Z`)) / 86_400_000) > 10;
   const status = !history ? "loading" : history.error ? "error" : rows.length < Math.max(3, settings.lookback) ? "insufficient" : latestDate !== reportAsOf || oldReport ? "stale" : "ready";
-  let message = !history ? "Waiting for official history." : history.error ?? (status === "insufficient" ? `Needs ${settings.lookback} weekly observations; ${rows.length} available.` : status === "stale" ? oldReport ? `Official report ${reportAsOf} is over nine days old; publication may be delayed.` : `Latest observation ${latestDate ?? "missing"} does not match report ${reportAsOf}.` : null);
+  let message = !history ? "Waiting for official history." : history.error ?? (status === "insufficient" ? `Needs ${settings.lookback} weekly observations; ${rows.length} available.` : status === "stale" ? oldReport ? `Official report ${reportAsOf} is over ten days old; publication may be delayed.` : `Latest observation ${latestDate ?? "missing"} does not match report ${reportAsOf}.` : null);
   const latest = history && !history.error && rows.length ? computeRows(rows, settings, true).at(-1) : undefined;
   if (status === "ready" && latest?.buy && latest.sell) message = "Both directional conditions met; no unambiguous setup.";
   const selectedZ = settings.participant === "Large Traders" ? latest?.ltZ : settings.participant === "Small Traders" ? latest?.stZ : latest?.chZ;

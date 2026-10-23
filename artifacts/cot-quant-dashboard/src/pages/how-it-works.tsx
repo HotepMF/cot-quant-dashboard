@@ -63,6 +63,7 @@ export function HowItWorksPage() {
             <li><b>Z-score</b>: how far today's net position sits from its average over the lookback (16 weeks by default, using net as a share of open interest; see The default model), in standard deviations. ±2 marks an extreme.</li>
             <li><b>Cycle rank</b>: where today's net position sits between the lowest (0%) and highest (100%) reading in the market's full history.</li>
             <li><b>Confluence</b>: commercials and large traders at opposite extremes of their cycle ranks at the same time.</li>
+            <li><b>Watch</b> with a <b>buying / selling</b> tag: no setup, but the selected group's net position changed unusually much in one week (more than half the Z threshold in standard deviations of its recent range). Green ▲ reads positive and red ▼ negative, the way the model reads that group: it follows commercials and leans against speculators, so "Commercials buying" or "Large specs selling" is green. It describes the week and can be the start of a build toward a signal; on its own it is not a tested signal.</li>
           </ul>
           <p>Signals and setups are <b>mechanical rule states</b>, not recommendations.</p>
         </Section>

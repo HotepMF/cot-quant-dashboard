@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { ArrowDown, ArrowUp, ArrowUpRight } from "lucide-react";
-import { prepareDetailMarket } from "@/lib/settings-store";
+import { prepareDetailMarket, useSharedSettings } from "@/lib/settings-store";
 import type { LiveReport } from "@/lib/settings-store";
 import type { ScanRow } from "@/hooks/use-screener";
 import { nfmt, nsigned, sectorLabel, shortDate, unavailableReason } from "@/hooks/use-screener";
@@ -31,8 +31,32 @@ export function SignalBadge({ row }: { row: ScanRow }) {
   if (row.signal === "bullish") return <span className="badge good"><ArrowUp size={11} />Bullish</span>;
   if (row.signal === "bearish") return <span className="badge bad"><ArrowDown size={11} />Bearish</span>;
   if (row.signal === "unavailable") return <span className="badge warn">Unavailable</span>;
-  if (row.flagged) return <span className="badge warn">Activity alert</span>;
+  if (row.flagged) return <span className="badge warn" title="No buy or sell setup, but something notable changed this week: see the tag beside it">Watch</span>;
   return <span className="badge neutral">No setup</span>;
+}
+
+/** Who moved, as the model reads it: the selected group's short name. */
+export const participantShort = (p: string) => p === "Large Traders" ? "Large specs" : p === "Small Traders" ? "Small specs" : "Commercials";
+
+/**
+ * Positive or negative read of a large one-week change, the way the model reads that group: it follows commercials
+ * and fades large and small speculators. So commercials buying, or speculators selling, reads positive.
+ */
+export function moveRead(participant: string, change: number | null) {
+  if (change == null || change === 0) return null;
+  const buying = change > 0, positive = participant === "Commercial Hedgers" ? buying : !buying;
+  return { buying, positive, text: `${participantShort(participant)} ${buying ? "buying" : "selling"}` };
+}
+
+/** A large one-week change in the selected group's net position, with its read. Describes the week; not a tested signal. */
+export function MoveBadge({ change }: { change: number | null }) {
+  const [settings] = useSharedSettings();
+  const read = moveRead(settings.participant, change);
+  if (!read) return <span className="badge neutral">Large move</span>;
+  const why = settings.participant === "Commercial Hedgers" ? "The model follows commercials" : "The model leans against speculators";
+  return <span className={`badge ${read.positive ? "good" : "bad"}`} title={`Large one-week change: ${read.text.toLowerCase()}. ${why}, so this reads ${read.positive ? "positive" : "negative"}. It describes the week; on its own it is not a tested signal.`} data-testid="badge-large-move">
+    {read.positive ? <ArrowUp size={11} /> : <ArrowDown size={11} />}{read.text}
+  </span>;
 }
 
 export function ScoreMeter({ value, tone }: { value: number | null; tone: string }) {
@@ -82,7 +106,7 @@ export function MarketTable({ rows, report, lookback, showSector, rank, sortKey,
               {reason && <span className="scan-reason">{reason}</span>}
             </td>
             {showSector && <td className="subtle">{sectorLabel(r.sector)}</td>}
-            <td><SignalBadge row={r} />{r.largeMove && r.status === "ready" && <span className="badge neutral" style={{ marginLeft: 5 }} title="Weekly change exceeded the large-move rule">Large move</span>}{r.oiAlert && <span className="badge warn" style={{ marginLeft: 5 }} title="Absolute open-interest change met the configured threshold">OI alert</span>}</td>
+            <td><SignalBadge row={r} />{r.largeMove && r.status === "ready" && <span style={{ marginLeft: 5 }}><MoveBadge change={r.weeklyChange} /></span>}{r.oiAlert && <span className="badge warn" style={{ marginLeft: 5 }} title="Absolute open-interest change met the configured threshold">OI alert</span>}</td>
             <td><ScoreMeter value={r.active ? r.setupScore : null} tone={tone} /></td>
             <td className="mono">{r.zScore == null ? "—" : `${nsigned(r.zScore, 2)}σ`}</td>
             <td className="mono">{r.cycle == null ? "—" : `${nfmt(r.cycle, 0)}%`}</td>
