@@ -11,6 +11,7 @@ import { Route, Switch } from "wouter";
 import { CONSOLIDATED_COMPONENTS, computeRows } from "@workspace/cot-engine";
 import type { RawRow } from "@workspace/cot-engine";
 import { useSharedSettings, STORAGE_SOURCE_MODE } from "@/lib/settings-store";
+import { moveRead } from "@/components/scanner/market-table";
 import { CurvePanel } from "@/components/curve-gauge";
 import { SettingsBar } from "@/components/settings-bar";
 import { Link } from "wouter";
@@ -269,7 +270,7 @@ function Dashboard() {
   const liveFailure = marketsQuery.isError || historyQuery.isError;
   const reportName = liveReport === "futures" ? "Legacy Futures Only" : "Legacy Combined";
   const checkTime = historyQuery.data?.checkedAt ?? marketsQuery.data?.checkedAt;
-  const isReportStale = reportAgeDays(historyQuery.data?.reportAsOf) > 9;
+  const isReportStale = reportAgeDays(historyQuery.data?.reportAsOf) > 10;
   const dataMarketLabel = liveActive ? historyQuery.data!.marketName : "Illustrative sample · not market data";
 
   return <div className="shell">
@@ -308,7 +309,7 @@ function Dashboard() {
           <span>{liveFailure
               ? `${historyQuery.isError ? "Weekly history request" : "Market list request"} failed${historyQuery.error instanceof Error ? `: ${historyQuery.error.message}` : marketsQuery.error instanceof Error ? `: ${marketsQuery.error.message}` : "."} ${liveActive ? "Existing returned CFTC history remains displayed with its original report date." : "Any displayed rows remain clearly labelled illustrative fallback, not current CFTC data."}`
               : liveActive
-                ? `${reportName} · ${effectiveMarket?.name ?? historyQuery.data?.marketName} · Tuesday report date ${formatDate(historyQuery.data!.reportAsOf)}. ${isReportStale ? "No newer release has been returned; the latest report is over nine days old. CFTC publication may be delayed." : "This is the Tuesday as-of date, not the Friday publication date."}`
+                ? `${reportName} · ${effectiveMarket?.name ?? historyQuery.data?.marketName} · Tuesday report date ${formatDate(historyQuery.data!.reportAsOf)}. ${isReportStale ? "No newer release has been returned; the latest report is over ten days old. CFTC publication may be delayed." : "This is the Tuesday as-of date, not the Friday publication date."}`
                 : "Loading the latest official feed. Any demo rows shown are synthetic and are not relabelled as current CFTC observations."}
           </span>
           <small><Clock3 size={12} /> {checkTime ? `Last checked ${new Date(checkTime).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" })} ET` : "Last check pending"}{historyQuery.data?.reportAsOf ? ` · report as of ${formatDate(historyQuery.data.reportAsOf)}` : marketsQuery.data?.reportAsOf ? ` · market list as of ${formatDate(marketsQuery.data.reportAsOf)}` : ""}</small>
@@ -457,7 +458,7 @@ function Dashboard() {
                 <td className="mono">{formatDate(r.date)}</td><td className={`mono ${changeTone(r.large_traders)}`}>{signed(r.large_traders)}</td><td className={`mono ${changeTone(r.small_traders)}`}>{signed(r.small_traders)}</td><td className={`mono ${changeTone(r.commercial_hedgers)}`}>{signed(r.commercial_hedgers)}</td>
                 <td className={`mono weekly-change ${changeTone(r.chDelta)}`}>{signed(r.chDelta)}</td><td className="mono">{r.chZ == null ? "—" : `${signed(r.chZ, 2)}σ`}</td><td className="mono">{r.chDeltaPct == null ? "—" : `${fmt(r.chDeltaPct, 0)}th / ${signed(r.chDeltaZ, 2)}σ`}</td>
                 <td className="mono"><span className={cycleTone(r.ltCycle)}>{fmt(r.ltCycle, 0)}</span> / <span className={cycleTone(r.chCycle)}>{fmt(r.chCycle, 0)}%</span></td><td className={`mono weekly-change ${changeTone(r.oiMove)}`}>{r.oiMove == null ? "—" : `${signed(r.oiMove, 1)}%`}</td>
-                <td><span className={`badge ${r.buy ? "good" : r.sell ? "bad" : "neutral"}`}>{!settings.showSignals && (r.buy || r.sell) ? "Signal labels hidden" : r.buy ? `Bullish ${signalPrefix}` : r.sell ? `Bearish ${signalPrefix}` : r.largeMove ? "Large position change" : "No signal"}</span></td>
+                <td><span className={`badge ${r.buy ? "good" : r.sell ? "bad" : r.largeMove ? (moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.positive ? "good" : "bad") : "neutral"}`}>{!settings.showSignals && (r.buy || r.sell) ? "Signal labels hidden" : r.buy ? `Bullish ${signalPrefix}` : r.sell ? `Bearish ${signalPrefix}` : r.largeMove ? `Large change · ${moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.text.toLowerCase() ?? "no direction"}` : "No signal"}</span></td>
               </tr>)}</tbody>
             </table></div>}
             <div className="chart-foot">Position Z uses SMA and population standard deviation of the configured rolling window including the current week. Cycle rank uses the full available history.</div>

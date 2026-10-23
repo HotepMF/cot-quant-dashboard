@@ -26,8 +26,8 @@ export async function stageSignals(db: Sql, owner: string, report: ReportKey, ma
     status: "ready", message: null, total: markets.length, processed: markets.length, settings: defaultSignalSettings, markets,
   };
   const expired = {
-    ...data, message: "The official report is over nine days old; fresh setups are unavailable.",
-    markets: markets.map(m => m.status === "ready" ? { ...m, status: "stale", signal: "unavailable", setupScore: null, message: `Official report ${run.report_as_of} is over nine days old; publication may be delayed.` } : m),
+    ...data, message: "The official report is over ten days old; fresh setups are unavailable.",
+    markets: markets.map(m => m.status === "ready" ? { ...m, status: "stale", signal: "unavailable", setupScore: null, message: `Official report ${run.report_as_of} is over ten days old; publication may be delayed.` } : m),
   };
   const payload = JSON.stringify(data), stale = JSON.stringify(expired);
   if (new TextEncoder().encode(payload + stale).length > 1_900_000) throw new Error("Prepared scan exceeds D1's row limit.");

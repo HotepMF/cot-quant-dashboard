@@ -80,7 +80,8 @@ export async function handleApi(request: Request, env: Env, ctx?: ExecutionConte
       const requestedSnapshot = request.headers.get("X-COT-Snapshot");
       if (requestedSnapshot && requestedSnapshot !== view.runId) return json({ message: "The official dataset changed during this scan. Try again to use one consistent snapshot." }, 409);
       if (path === "/api/cot/markets") return json({ report, reportAsOf: view.reportAsOf, checkedAt: view.updatedAt, markets: view.markets });
-      const old = Date.now() - Date.parse(`${view.reportAsOf}T00:00:00Z`) >= 10 * 86_400_000;
+      // Overdue only once the next Friday release has passed (day 11 from the Tuesday as-of date), matching signals.ts.
+      const old = Date.now() - Date.parse(`${view.reportAsOf}T00:00:00Z`) >= 11 * 86_400_000;
       if (path === "/api/cot/market" && !view.markets.some(m => m.name === marketName)) return json({ message: "Market is not in this official report." }, 404);
       const cacheKey = new Request(new URL(`/__cot_prepared/${encodeURIComponent(view.runId)}/${old ? "stale" : "current"}/${encodeURIComponent(marketName ?? "scan")}`, url.origin));
       const hit = cache ? await cache.match(cacheKey) : undefined;
