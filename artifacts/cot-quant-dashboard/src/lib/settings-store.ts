@@ -13,7 +13,7 @@ export const STORAGE_SOURCE = "cot-quant-source-selection-v1";
 export const STORAGE_SOURCE_MODE = "cot-quant-source-mode";
 export const STORAGE_THEME = "cot-quant-theme-v2";
 /** Bumped when the site's default signal model changes; saved models from before are moved to the new default once. */
-export const MODEL_VERSION = 2;
+export const MODEL_VERSION = 3;
 export const STORAGE_MODEL_VERSION = "cot-quant-model-version";
 export const STORAGE_PREVIOUS_MODEL = "cot-quant-previous-model";
 const MODEL_KEYS = Object.keys(defaultSignalSettings) as (keyof typeof defaultSignalSettings)[];
@@ -27,7 +27,7 @@ export const initialSettings: Settings = {
 function load(): Settings {
   try {
     let saved = JSON.parse(localStorage.getItem(STORAGE_SETTINGS) ?? "{}");
-    // One-time move to the Oct 2026 default model; the visitor's previous model is kept so it can be restored.
+    // One-time move to the current default model; the visitor's previous model is kept so it can be restored.
     if (Number(localStorage.getItem(STORAGE_MODEL_VERSION)) < MODEL_VERSION) {
       if (Object.keys(saved).length) {
         const previous = Object.fromEntries(MODEL_KEYS.map(k => [k, saved[k] ?? previousDefaultSignalSettings[k]]));

@@ -60,7 +60,7 @@ export function HowItWorksPage() {
         <Section id="reading" title="Reading the site">
           <ul>
             <li><b>Net position</b>: longs minus shorts for each group.</li>
-            <li><b>Z-score</b>: how far today's net position sits from its average over the lookback (16 weeks by default, using net as a share of open interest; see The default model), in standard deviations. ±2 marks an extreme.</li>
+            <li><b>Z-score</b>: how far today's net position sits from its average over the lookback (8 weeks by default, using the raw net position; see The default model), in standard deviations. ±2 marks an extreme.</li>
             <li><b>Cycle rank</b>: where today's net position sits between the lowest (0%) and highest (100%) reading in the market's full history.</li>
             <li><b>Confluence</b>: commercials and large traders at opposite extremes of their cycle ranks at the same time.</li>
             <li><b>Watch</b> with a <b>buying / selling</b> tag: no setup, but the selected group's net position changed unusually much in one week (more than half the Z threshold in standard deviations of its recent range). Green ▲ reads positive and red ▼ negative, the way the model reads that group: it follows commercials and leans against speculators, so "Commercials buying" or "Large specs selling" is green. It describes the week and can be the start of a build toward a signal; on its own it is not a tested signal.</li>
@@ -69,14 +69,16 @@ export function HowItWorksPage() {
         </Section>
 
         <Section id="model" title="The default model">
-          <p>Market detail, Sector signals and Signal watchlist use the same rules as the TradingView indicator "Commitment of Traders: Total Enhanced + OI". Since Oct 2026 the site default is <b>Both (AND gate)</b> on <b>Commercial Hedgers</b>, with <b>OI-normalized Z</b> (each week's net position divided by that week's open interest) over <b>16 weeks</b>, a Z threshold of <b>2.0</b> and a confluence cycle threshold of <b>65%</b>. You can change any setting; the site remembers yours.</p>
-          <p><b>Why these settings.</b> We tested 1,067 combinations (lookbacks 16, 32, 48 and 64; Z 1.5–2.5; confluence 50–100; standard and OI-normalized) on 42 core markets, 2002–2026, choosing on 2002–2013 and checking on 2014–2026:</p>
+          <p>Market detail, Sector signals and Signal watchlist use the same rules as the TradingView indicator "Commitment of Traders: Total Enhanced + OI". Since Oct 27, 2026 the site default is <b>Both (AND gate)</b> on <b>Commercial Hedgers</b>, with the <b>standard Z-score</b> of their net position over <b>8 weeks</b>, a Z threshold of <b>2.25</b> and a confluence cycle threshold of <b>75%</b>. In plain terms: commercials have moved to an extreme for the last two months, and are near the end of their all-time range while large speculators are at the other end. You can change any setting; the site remembers yours.</p>
+          <p><b>What the history shows.</b> We measured 400 settings (lookbacks 8 to 64 weeks, Z 1.5 to 2.5, cycle thresholds, raw and OI-normalized) on 43 core markets, 2002–2026, by what price did in the week after each report:</p>
           <ul>
-            <li>No setting passed both periods, and the grid as a whole did not beat random timing. The previous default (COT Confluence, 63 weeks) showed nothing.</li>
-            <li>One area led in every test: the AND gate with OI-normalized Z over 16 weeks. Used as a filter for weekly bar-pattern entries (2-2, 3-2, failed 2, 3), it averaged +0.14R per trade with a 2σ target in both 2002–2013 and 2014–2026, before costs, over about 450 trades.</li>
-            <li>Longer lookbacks (32, 48, 64) did not show it, and keeping the filter open after the signal ended diluted it.</li>
+            <li>At this setting, the week after the report moved in the commercials' direction <b>58% of the time</b> (normal: 50%), by about <b>+0.2 of a normal week's move</b> on average: roughly +0.4% for the S&amp;P 500 or +0.9% for crude, before costs.</li>
+            <li>It held in both 2002–2013 and 2014–2026, in 26 of 41 markets, and the nearby settings agreed (29 of them showed the same direction; none showed the opposite).</li>
+            <li>It is a short effect: most of it is gone by 4 weeks and none is left by 13.</li>
+            <li>It is rare: a few readings a quarter across all markets.</li>
+            <li>After counting all 400 settings we tried, the chance that the best of them looks this good by luck is about 10% (the usual bar is 5%). Each new week adds to the record.</li>
           </ul>
-          <p>That makes it our <b>best-tested setting, labeled Speculation</b>: it was found by searching, so it is not validated. It is being forward-tested in a public demo account on <Link href="/invisible-hand">The Invisible Hand</Link>, with frozen rules and every loss shown. Positioning still does not time moves by itself; read setups as context, not instructions.</p>
+          <p>The previous default (OI-normalized Z over 16 weeks, Z 2.0, cycle 65%) showed no lean in the week after the report. It is still one click away in Settings. The demo account on <Link href="/invisible-hand">The Invisible Hand</Link> keeps using it, because its rules are frozen.</p>
         </Section>
 
         <Section id="settings" title="Settings">
@@ -85,9 +87,9 @@ export function HowItWorksPage() {
             <li><b>Participant</b>: the group whose Z-score gates the signal. Commercial hedgers are followed (an extreme long is bullish); large and small traders are faded (an extreme long is bearish).</li>
             <li><b>Signal mode</b>: <b>Z-Score Only</b> fires when the participant's net position is an extreme for the lookback. <b>COT Confluence</b> fires when commercials and large traders sit at opposite ends of their full history (cycle rank), with small traders as optional confirmation. <b>Both (AND gate)</b> needs the two to agree in the same week. It is the strictest mode and the site default.</li>
             <li><b>Z calculation</b>: <b>Standard</b> uses the raw net position. <b>OI normalization</b> divides each week's net position by that week's open interest first, so a market that has grown or shrunk is compared fairly. A week with missing open interest leaves no Z until the window is complete again.</li>
-            <li><b>Lookback</b>: how many weeks the Z-score compares against (16 by default).</li>
-            <li><b>Z threshold</b>: how many standard deviations count as an extreme (2.0 by default).</li>
-            <li><b>Confluence cycle</b>: how far toward the ends of their history commercials and large traders must be (65% means commercials at or above 65% and large traders at or below 35%, or the reverse).</li>
+            <li><b>Lookback</b>: how many weeks the Z-score compares against (8 by default).</li>
+            <li><b>Z threshold</b>: how many standard deviations count as an extreme (2.25 by default).</li>
+            <li><b>Confluence cycle</b>: how far toward the ends of their history commercials and large traders must be (75%, the default, means commercials at or above 75% and large traders at or below 25%, or the reverse).</li>
             <li><b>OI move alert</b>: flags a week when open interest changes by at least this percentage.</li>
             <li><b>Switches</b>: Z-score detection on or off; small trader confirmation for confluence; large position change flags a weekly change larger than half the Z threshold in standard deviations.</li>
             <li><b>Market detail display</b>: buy / sell labels and the chart label, the chart highlight style (shapes, background or both), and the table text size. These change what you see, not the calculations.</li>

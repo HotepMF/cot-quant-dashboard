@@ -47,7 +47,7 @@ function Trades({ rows }: { rows: DemoTrade[] }) {
   </table></div>;
 }
 
-/** Public forward test of the site's default COT filter traded with weekly Strat entries; one contract per trade. */
+/** Public forward test of the 16-week COT filter (the site default until Oct 27, 2026; frozen) traded with weekly Strat entries; one contract per trade. */
 export function DemoAccount() {
   const query = useQuery({
     queryKey: ["demo-account"],
@@ -68,7 +68,7 @@ export function DemoAccount() {
   return <section className="card sx-panel" aria-label="Demo account" data-testid="panel-demo">
     <div className="sx-head"><span>DEMO ACCOUNT · FORWARD TEST OF THE DEFAULT FILTER</span><b>{d?.startedWeek ? `since week of ${wk(d.startedWeek)}` : "starting soon"}</b></div>
     <div className="sx-rd">
-      <p className="muted"><span className="ih-tag">Speculation</span>A public paper-trading experiment, the same for everyone: the site's default COT filter (AND gate, 16-week OI-normalized Z) decides the side, and weekly bar patterns (2-2, 3-2, failed 2, 3) trigger the entry. One full-size contract per trade, stop trailed to every bar that closes our way, target {DEMO_TARGET_SIGMA}σ. Rules are frozen; results are before commissions and slippage, and every loss stays on the record. Not advice: no one should copy these orders.</p>
+      <p className="muted"><span className="ih-tag">Speculation</span>A public paper-trading experiment, the same for everyone: a frozen COT filter (AND gate, 16-week OI-normalized Z; the site default until Oct 27, 2026) decides the side, and weekly bar patterns (2-2, 3-2, failed 2, 3) trigger the entry. One full-size contract per trade, stop trailed to every bar that closes our way, target {DEMO_TARGET_SIGMA}σ. Rules are frozen; results are before commissions and slippage, and every loss stays on the record. Not advice: no one should copy these orders.</p>
     </div>
     {query.isLoading && <div className="sx-rd"><p className="muted">Loading the demo account…</p></div>}
     {query.isError && <div className="sx-rd"><p className="muted">The demo account is unavailable right now.</p></div>}

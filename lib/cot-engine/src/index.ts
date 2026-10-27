@@ -15,17 +15,23 @@ export type SignalSettings = {
 };
 export const Z_METHODS = ["Standard Z-Score", "Open Interest Normalization"] as const;
 /**
- * Site defaults (Oct 2026): the AND gate on commercials with OI-normalised Z over 16 weeks led every test we ran
- * (backtest/indicator_grid_findings.md). It is not validated; it is being forward-tested in the demo account.
+ * Site defaults (Oct 27, 2026): the AND gate on commercials, standard Z over 8 weeks >= 2.25, cycle 75. Best plateau of
+ * 400 settings on the week after each report, 2002-2026 (backtest/state/findings.md, weekly unit).
  */
 export const defaultSignalSettings: SignalSettings = {
+  lookback: 8, zThreshold: 2.25, zEnabled: true, confluenceThreshold: 75,
+  requireSmall: false, changeEnabled: true, oiThreshold: 25,
+  participant: "Commercial Hedgers", signalMode: "Both (AND gate)", zMethod: "Standard Z-Score",
+};
+/** The previous site default (Oct 22-27, 2026), kept so visitors can switch back: OI-normalised Z over 16 weeks. */
+export const previousDefaultSignalSettings: SignalSettings = {
+  ...defaultSignalSettings, lookback: 16, zThreshold: 2, confluenceThreshold: 65, zMethod: "Open Interest Normalization",
+};
+/** The demo account's filter, frozen with its rules: it does not follow later changes to the site default. */
+export const DEMO_FILTER_SETTINGS: SignalSettings = {
   lookback: 16, zThreshold: 2, zEnabled: true, confluenceThreshold: 65,
   requireSmall: false, changeEnabled: true, oiThreshold: 25,
   participant: "Commercial Hedgers", signalMode: "Both (AND gate)", zMethod: "Open Interest Normalization",
-};
-/** The site's defaults before Oct 2026, kept so visitors can switch back. */
-export const previousDefaultSignalSettings: SignalSettings = {
-  ...defaultSignalSettings, lookback: 63, signalMode: "COT Confluence", zMethod: "Standard Z-Score",
 };
 const metricKeys = ["large_traders", "small_traders", "commercial_hedgers"] as const;
 type MetricKey = typeof metricKeys[number];
