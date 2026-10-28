@@ -28,10 +28,10 @@ export function SectorSignalsPage() {
   const totals = groups.reduce((t, g) => ({ bull: t.bull + g.bull, bear: t.bear + g.bear, ready: t.ready + g.ready, all: t.all + g.all.length }), { bull: 0, bear: 0, ready: 0, all: 0 });
   const jump = (id: string) => document.getElementById(`sector-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  return <ScannerShell screener={s} eyebrow="All-market scan / Sector signals" title="Sector signals" lede="The core watchlist markets, grouped like the watchlist, evaluated with the same rule set as the detail view.">
+  return <ScannerShell screener={s} eyebrow="All-market scan / Sector positioning" title="Sector positioning" lede="The core watchlist markets, grouped like the watchlist, evaluated with the same rule set as the detail view.">
     <div className="scan-tally fade-in">
-      <div><span className="eyebrow">Bullish setups</span><b className="mono change-up" data-testid="count-bullish">{totals.bull}</b></div>
-      <div><span className="eyebrow">Bearish setups</span><b className="mono change-down" data-testid="count-bearish">{totals.bear}</b></div>
+      <div><span className="eyebrow">Extreme long</span><b className="mono change-up" data-testid="count-bullish">{totals.bull}</b></div>
+      <div><span className="eyebrow">Extreme short</span><b className="mono change-down" data-testid="count-bearish">{totals.bear}</b></div>
       <div><span className="eyebrow">Evaluated</span><b className="mono" data-testid="count-coverage">{totals.ready}<small>/{totals.all || "—"}</small></b></div>
       <Link href="/signal-watchlist" className="btn tally-link" data-testid="link-to-watchlist"><ListOrdered size={14} />Ranked watchlist</Link>
     </div>

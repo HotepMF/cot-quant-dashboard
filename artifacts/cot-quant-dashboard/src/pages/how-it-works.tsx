@@ -65,11 +65,11 @@ export function HowItWorksPage() {
             <li><b>Confluence</b>: commercials and large traders at opposite extremes of their cycle ranks at the same time.</li>
             <li><b>Watch</b> with a <b>buying / selling</b> tag: no setup, but the selected group's net position changed unusually much in one week (more than half the Z threshold in standard deviations of its recent range). Green ▲ reads positive and red ▼ negative, the way the model reads that group: it follows commercials and leans against speculators, so "Commercials buying" or "Large specs selling" is green. It describes the week and can be the start of a build toward a signal; on its own it is not a tested signal.</li>
           </ul>
-          <p>Signals and setups are <b>mechanical rule states</b>, not recommendations.</p>
+          <p>Readings are <b>mechanical rule states</b> from the data, not recommendations.</p>
         </Section>
 
         <Section id="model" title="The default model">
-          <p>Market detail, Sector signals and Signal watchlist use the same rules as the TradingView indicator "Commitment of Traders: Total Enhanced + OI". Since Oct 27, 2026 the site default is <b>Both (AND gate)</b> on <b>Commercial Hedgers</b>, with the <b>standard Z-score</b> of their net position over <b>8 weeks</b>, a Z threshold of <b>2.25</b> and a confluence cycle threshold of <b>75%</b>. In plain terms: commercials have moved to an extreme for the last two months, and are near the end of their all-time range while large speculators are at the other end. You can change any setting; the site remembers yours.</p>
+          <p>Market detail, Sector positioning and the Watchlist use the same rules as the TradingView indicator "Commitment of Traders: Total Enhanced + OI". Since Oct 27, 2026 the site default is <b>Both (AND gate)</b> on <b>Commercial Hedgers</b>, with the <b>standard Z-score</b> of their net position over <b>8 weeks</b>, a Z threshold of <b>2.25</b> and a confluence cycle threshold of <b>75%</b>. In plain terms: commercials have moved to an extreme for the last two months, and are near the end of their all-time range while large speculators are at the other end. You can change any setting; the site remembers yours.</p>
           <p><b>What the history shows.</b> We measured 400 settings (lookbacks 8 to 64 weeks, Z 1.5 to 2.5, cycle thresholds, raw and OI-normalized) on 43 core markets, 2002–2026, by what price did in the week after each report:</p>
           <ul>
             <li>At this setting, the week after the report moved in the commercials' direction <b>58% of the time</b> (normal: 50%), by about <b>+0.2 of a normal week's move</b> on average: roughly +0.4% for the S&amp;P 500 or +0.9% for crude, before costs.</li>
@@ -78,12 +78,12 @@ export function HowItWorksPage() {
             <li>It is rare: a few readings a quarter across all markets.</li>
             <li>After counting all 400 settings we tried, the chance that the best of them looks this good by luck is about 10% (the usual bar is 5%). Each new week adds to the record.</li>
           </ul>
-          <p><b>Short-term oscillators next to it.</b> Market pages and the scanners also show Larry Williams' <b>Ultimate Oscillator</b> (7, 14, 28 days) and <b>%R</b> (14 days). In our tests the 8-week reading worked best on a pullback: on the 28 weeks when the Ultimate Oscillator was oversold for a long reading (under 30) or overbought for a short one (over 70), the next week went the commercials' way 75% of the time, about +0.7 of a normal week. Seasonal and trend tools added nothing. 28 cases is a small sample, so every new reading is logged automatically with its outcome one week later, and the live record is shown on the Signal watchlist.</p>
-          <p>The previous default (OI-normalized Z over 16 weeks, Z 2.0, cycle 65%) showed no lean in the week after the report. It is still one click away in Settings. The demo account on <Link href="/invisible-hand">The Invisible Hand</Link> keeps using it, because its rules are frozen.</p>
+          <p><b>Short-term oscillators next to it.</b> Market pages and the scanners also show Larry Williams' <b>Ultimate Oscillator</b> (7, 14, 28 days) and <b>%R</b> (14 days). In our tests the 8-week reading worked best on a pullback: on the 28 weeks when the Ultimate Oscillator was oversold for a long reading (under 30) or overbought for a short one (over 70), the next week went the commercials' way 75% of the time, about +0.7 of a normal week. Seasonal and trend tools added nothing. 28 cases is a small sample, so every new reading is logged automatically with its outcome one week later, and the live record is shown on the Watchlist.</p>
+          <p>The previous default (OI-normalized Z over 16 weeks, Z 2.0, cycle 65%) showed no lean in the week after the report. It is still one click away in Settings.</p>
         </Section>
 
         <Section id="settings" title="Settings">
-          <p>The settings bar sits under the market picker on market detail and at the top of Sector signals and Signal watchlist. One set of settings drives all three pages, and the site remembers yours. Click the bar to open it; "site default" or "custom" shows which you are using.</p>
+          <p>The settings bar sits under the market picker on market detail and at the top of Sector positioning and the Watchlist. One set of settings drives all three pages, and the site remembers yours. Click the bar to open it; "site default" or "custom" shows which you are using.</p>
           <ul>
             <li><b>Participant</b>: the group whose Z-score gates the signal. Commercial hedgers are followed (an extreme long is bullish); large and small traders are faded (an extreme long is bearish).</li>
             <li><b>Signal mode</b>: <b>Z-Score Only</b> fires when the participant's net position is an extreme for the lookback. <b>COT Confluence</b> fires when commercials and large traders sit at opposite ends of their full history (cycle rank), with small traders as optional confirmation. <b>Both (AND gate)</b> needs the two to agree in the same week. It is the strictest mode and the site default.</li>
@@ -115,7 +115,7 @@ export function HowItWorksPage() {
             <li><b>Positioning monitor</b>: where funds sit in their 3-year range, as a percentile. Funds are managed money for commodities and leveraged funds for financial futures, shown against producers or asset managers. The 90th percentile or above, or the 10th or below, is labeled crowded. A low reading can still be a net long.</li>
           </ul>
           <p>Panel text is generated from the numbers each day and describes what is happening, not what comes next.</p>
-          <p><b>Watch notes</b> (labeled Speculation) report co-movement we found between the site's default COT filter on a sector's futures and that sector versus SPY, 2002–2026. Energy is the one consistent link: XLE has tended to move with the filter on crude, gasoline and natural gas. Utilities moved the opposite way to a bullish natural-gas filter. Metals showed nothing for materials or industrials. Samples are small (about 30 signals per market) and we checked many links, so treat these as things to watch, not rules.</p>
+          <p><b>Watch notes</b> report co-movement we found between the site's default COT filter on a sector's futures and that sector versus SPY, 2002–2026. Energy is the one consistent link: XLE has tended to move with the filter on crude, gasoline and natural gas. Utilities moved the opposite way to a bullish natural-gas filter. Metals showed nothing for materials or industrials. Samples are small (about 30 signals per market) and we checked many links, so treat these as things to watch, not rules.</p>
         </Section>
 
         <Section id="invisible-hand" title="The Invisible Hand">
@@ -128,9 +128,8 @@ export function HowItWorksPage() {
             <li><b>Next two weeks</b>: FOMC decisions, CPI and payrolls (from the Federal Reserve and BLS schedules) and expirations (from exchange rules), each with what our tests found. FOMC and payrolls days have run about 20% wider than other days in the same volatility state. CPI days, options expirations, quarterly "witching" and the ES/NQ roll showed no reliable change in the day's range.</li>
             <li><b>Crowded watch</b>: core markets where large speculators sit in the top or bottom 10% of their 3-year range. Crowded readings were not followed by bigger moves in our tests, so treat this as where risk sits, not a timing signal.</li>
             <li><b>Event tags</b>: market rows here and on the SPDR sectors page carry a solid tag for scheduled events in the next 7 days and an outlined "in data" tag for events that fell inside the week the latest CFTC report covers, so a position change can be read next to the release that happened that week.</li>
-            <li><b>Demo account</b>: a public paper-trading forward test of the default model. The COT filter decides the side, weekly bar patterns (2-2, 3-2, failed 2, 3) trigger entries, one full-size contract per trade, stop trailed to every week that closes our way, target 2σ. The rules are frozen, results are before commissions and slippage, and every trade stays on the record. Each week's orders are placed after the Friday close for the following week, so no order can use prices from before it was published.</li>
             <li><b>Timing</b>: positioning updates minutes after each Friday CFTC release; prices and yields after each close.</li>
-            <li><b>Our read</b> (coming soon): a short weekly read. Every statement will be labeled Validated (backed by our tested data) or Speculation (our judgment, with the reasoning shown).</li>
+            <li><b>Our read</b> (coming soon): a short weekly read, with each statement shown next to the record behind it.</li>
           </ul>
         </Section>
 
@@ -154,7 +153,7 @@ export function HowItWorksPage() {
             <li><b>COT positioning</b>: weekly. Positions as of Tuesday are published Friday at 3:30 p.m. ET, and the site checks for the release automatically. The CFTC plans to publish twice a week from late 2026 (positions as of Monday on Wednesday, as of Wednesday on Friday). The site will keep one row per week, the Friday release, so every lookback still counts weeks; the Monday report will be shown separately as a mid-week update once the CFTC confirms the format.</li>
             <li><b>Sector and futures prices</b>: end of day, updated on weekday evenings after the U.S. close. During the trading day the page shows the previous close. The page header shows both dates, for example "Prices Oct 21 close · CFTC Oct 13".</li>
             <li><b>If prices stop updating</b>, the page shows a warning with the last update date instead of quietly showing old numbers.</li>
-            <li><b>The Invisible Hand</b>: positioning minutes after each Friday CFTC release; prices, volatility and yields after each weekday close. The demo account advances once a week, after the Friday close.</li>
+            <li><b>The Invisible Hand</b>: positioning minutes after each Friday CFTC release; prices, volatility and yields after each weekday close.</li>
             <li><b>Sources</b>: CFTC Commitments of Traders (Legacy, Disaggregated and Traders in Financial Futures); end-of-day prices from Yahoo Finance (futures curves: individual contracts; VIX futures: Cboe settlements); Treasury yields from the U.S. Treasury's daily par yield curve.</li>
           </ul>
         </Section>
