@@ -41,7 +41,7 @@ export function HowItWorksPage() {
       </header>
 
       <nav className="hiw-toc print-hidden" aria-label="On this page">
-        {[["cot", "The COT report"], ["reading", "Reading the site"], ["model", "The default model"], ["settings", "Settings"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["invisible-hand", "The Invisible Hand"], ["curve", "Futures curve"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
+        {[["cot", "The COT report"], ["reading", "Reading the site"], ["model", "The default model"], ["settings", "Settings"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["invisible-hand", "The Invisible Hand"], ["sector-breaks", "Sector breaks"], ["curve", "Futures curve"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
           <a key={id} href={`#${id}`} className="ms-chip" onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</a>)}
       </nav>
 
@@ -133,6 +133,16 @@ export function HowItWorksPage() {
           </ul>
         </Section>
 
+        <Section id="sector-breaks" title="Sector breaks">
+          <p>In the week after each 8-week reading, the Watchlist logs whether the rest of the market's sector broke last week's range the reading's way, and what the reading's market did next. It is recorded as evidence of what is happening, not a forecast.</p>
+          <ul>
+            <li><b>The week</b>: from 17:00 New York on the release Friday to the next Friday's 17:00. Last week's range is its highest and lowest 15-minute close.</li>
+            <li><b>A break</b>: the first 15-minute close beyond that range, as long as the other side was not closed beyond first.</li>
+            <li><b>A sector break</b>: the moment at least half of the <i>other</i> markets in the sector have broken the reading's way (for example, 2 of 3 for crude: gasoline, heating oil, natural gas). Sectors: equity indices, energy, metals, Treasuries, currencies, crypto, grains, livestock, softs. The dollar index has no sector.</li>
+            <li><b>What followed</b>: the reading's market's move from that 15-minute close over the next 1, 2 and 4 hours and to the end of the session (17:00 New York), in its direction, in units of a normal day's move (the last 20 days' standard deviation).</li>
+            <li><b>What we found</b>: on 2010-2026 15-minute data (11 markets), 12 cases, all horizons positive and growing through the session (+0.10 after an hour, +0.63 by the session's end), but too few to rule out luck. On daily data across all 43 markets, the sector breaking first was the best lead (70 cases, 59% of the next week went the reading's way) without passing our multiple-test check. The live log is the test.</li>
+          </ul>
+        </Section>
         <Section id="curve" title="Futures curve">
           <p>Each market detail page has a <b>curve</b> gauge and a <b>volatility</b> gauge, and The Invisible Hand lists the curves that are stretched. All of it is labeled <b>Measured · not a signal</b>.</p>
           <ul>

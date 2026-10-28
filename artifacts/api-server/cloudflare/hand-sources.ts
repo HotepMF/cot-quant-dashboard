@@ -1,5 +1,5 @@
 /** Inputs for The Invisible Hand numbers. Run in GitHub Actions, never in the Worker. */
-import { HAND_CATEGORIES, type HandReport } from "@workspace/cot-engine";
+import { HAND_CATEGORIES, type HandReport, type IntradayBars } from "@workspace/cot-engine";
 
 export type CurvePoint = { date: string; m3: number; y2: number; y10: number };
 export type CategoryHistory = { date: string; oi: number; long: number; short: number }[];
@@ -94,6 +94,23 @@ export async function yahooBars(ticker: string, range = "3mo"): Promise<DailyBar
     if (o != null && h != null && l != null && c != null && h >= l && l > 0) {
       out.dates.push(new Date(t * 1000).toISOString().slice(0, 10)); out.open.push(o); out.high.push(h); out.low.push(l); out.close.push(c);
     }
+  });
+  return out;
+}
+
+/** Recent 15-minute closes from the Yahoo chart endpoint (bar open times in epoch ms; empty closes skipped). */
+export async function yahooIntraday(ticker: string, range = "1mo"): Promise<IntradayBars> {
+  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`);
+  url.searchParams.set("range", range);
+  url.searchParams.set("interval", "15m");
+  const response = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 (cot-quant invisible hand job)", Accept: "application/json" }, signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) throw new Error(`Price source returned HTTP ${response.status} for ${ticker}.`);
+  const body = await response.json() as { chart?: { result?: { timestamp?: number[]; indicators?: { quote?: { close?: (number | null)[] }[] } }[] } };
+  const r = body.chart?.result?.[0], close = r?.indicators?.quote?.[0]?.close ?? [];
+  const out: IntradayBars = { times: [], close: [] };
+  (r?.timestamp ?? []).forEach((t, i) => {
+    const c = close[i];
+    if (c != null && c > 0) { out.times.push(t * 1000); out.close.push(c); }
   });
   return out;
 }

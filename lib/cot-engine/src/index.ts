@@ -135,5 +135,7 @@ export type { CurveContract, CurvePairHistory, CurveRow, CurveSnapshot, CurveZon
 export { isMidweekReport, releaseFriday } from "./release";
 export { CASE_MARKETS, COT8_RECORD, tally, ultimateOscillator, updateCaseLog, uoPullback, williamsR, wrPullback } from "./case-log";
 export type { Bars, CaseInput, CaseLog, CotCase, OscillatorSnapshot, Tally } from "./case-log";
+export { BAR_MS, BREAK_HISTORY, BREAK_SECTORS, breakTally, dailyStd, firstBreaks, nyEpoch, sectorOf, sessionEnd, updateSectorBreakLog } from "./sector-break";
+export type { IntradayBars, SectorBreakCase, SectorBreakInput, SectorBreakLog } from "./sector-break";
 export { DEMO_MARKETS, DEMO_RULES_VERSION, DEMO_STATE_VERSION, DEMO_START_BALANCE, DEMO_TARGET_SIGMA, advanceDemo, emptyDemo, stepMarket, triggerPattern, weeklySigma } from "./demo";
 export type { DemoMarketState, DemoOrder, DemoPayload, DemoPosition, DemoState, DemoTrade, WeekBar } from "./demo";

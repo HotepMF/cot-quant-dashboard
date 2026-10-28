@@ -1,4 +1,5 @@
 import { LiveRecord } from "@/components/oscillators";
+import { SectorBreakRecord } from "@/components/sector-breaks";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, LayoutGrid, Search, X } from "lucide-react";
@@ -85,6 +86,7 @@ export function SignalWatchlistPage() {
       <Link href="/sector-signals" className="btn" data-testid="link-to-sectors"><LayoutGrid size={14} />Sector breakdown</Link>
     </div>
     <LiveRecord />
+    <SectorBreakRecord />
     <section className="card">
       <div className="card-body" style={{ paddingTop: 10 }}>
         {!s.data && s.query.isLoading ? <TableSkeleton rows={10} /> :
