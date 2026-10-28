@@ -78,6 +78,7 @@ export function HowItWorksPage() {
             <li>It is rare: a few readings a quarter across all markets.</li>
             <li>After counting all 400 settings we tried, the chance that the best of them looks this good by luck is about 10% (the usual bar is 5%). Each new week adds to the record.</li>
           </ul>
+          <p><b>Short-term oscillators next to it.</b> Market pages and the scanners also show Larry Williams' <b>Ultimate Oscillator</b> (7, 14, 28 days) and <b>%R</b> (14 days). In our tests the 8-week reading worked best on a pullback: on the 28 weeks when the Ultimate Oscillator was oversold for a long reading (under 30) or overbought for a short one (over 70), the next week went the commercials' way 75% of the time, about +0.7 of a normal week. Seasonal and trend tools added nothing. 28 cases is a small sample, so every new reading is logged automatically with its outcome one week later, and the live record is shown on the Signal watchlist.</p>
           <p>The previous default (OI-normalized Z over 16 weeks, Z 2.0, cycle 65%) showed no lean in the week after the report. It is still one click away in Settings. The demo account on <Link href="/invisible-hand">The Invisible Hand</Link> keeps using it, because its rules are frozen.</p>
         </Section>
 

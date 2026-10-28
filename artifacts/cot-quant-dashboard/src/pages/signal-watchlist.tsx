@@ -1,3 +1,4 @@
+import { LiveRecord } from "@/components/oscillators";
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, LayoutGrid, Search, X } from "lucide-react";
@@ -83,6 +84,7 @@ export function SignalWatchlistPage() {
       <div className="eyebrow" data-testid="text-result-count">{filtered.length} of {rows.length} markets{s.scanning ? " · scan in progress" : ""}</div>
       <Link href="/sector-signals" className="btn" data-testid="link-to-sectors"><LayoutGrid size={14} />Sector breakdown</Link>
     </div>
+    <LiveRecord />
     <section className="card">
       <div className="card-body" style={{ paddingTop: 10 }}>
         {!s.data && s.query.isLoading ? <TableSkeleton rows={10} /> :

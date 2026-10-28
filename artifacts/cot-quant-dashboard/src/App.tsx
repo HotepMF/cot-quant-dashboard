@@ -11,6 +11,7 @@ import { Route, Switch } from "wouter";
 import { CONSOLIDATED_COMPONENTS, computeRows } from "@workspace/cot-engine";
 import type { RawRow } from "@workspace/cot-engine";
 import { useSharedSettings, STORAGE_SOURCE_MODE } from "@/lib/settings-store";
+import { OscReadout } from "@/components/oscillators";
 import { moveRead } from "@/components/scanner/market-table";
 import { CurvePanel } from "@/components/curve-gauge";
 import { SettingsBar } from "@/components/settings-bar";
@@ -380,6 +381,7 @@ function Dashboard() {
                 <div className="statline"><span className="subtle">Position Z-score</span><b className="mono">{selectedZ == null ? "Insufficient lookback" : `${signed(selectedZ, 2)}σ`}</b></div>
                 <div className="statline"><span className="subtle">Confluence</span><b>{latest?.confluenceBull ? "Opposing extremes · bullish" : latest?.confluenceBear ? "Opposing extremes · bearish" : "Not aligned"}</b></div>
                 <div className="statline"><span className="subtle">OI threshold</span><b className="mono">{latest?.oiMove != null && Math.abs(latest.oiMove) >= settings.oiThreshold ? `${signed(latest.oiMove, 1)}% alert` : "No threshold breach"}</b></div>
+                <OscReadout code={effectiveMarket?.code} />
               </div>
               <div className="notice" style={{ marginTop: 19 }}>A signal state is a mechanical indicator output—not a recommendation. Position extremes and confluence are descriptive inputs only.</div>
             </div>
