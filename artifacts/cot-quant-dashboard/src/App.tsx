@@ -139,7 +139,7 @@ function Dashboard() {
   const previous = computed[computed.length - 2];
   const visible = chartWeeks === 0 ? computed : computed.slice(-chartWeeks);
   // The positioning chart shows what the model reads: net as % of open interest when the Z calculation is
-  // OI-normalised (the default), contracts otherwise; plus the lookback window and the selected participant's +/-Z band.
+  // OI-normalised, contracts otherwise (the default); plus the lookback window and the selected participant's +/-Z band.
   const oiNorm = settings.zMethod === "Open Interest Normalization";
   const modelKey: MetricKey = settings.participant === "Large Traders" ? "large_traders" : settings.participant === "Small Traders" ? "small_traders" : "commercial_hedgers";
   const asModel = (r: RawRow, k: MetricKey) => oiNorm ? (r.open_interest ? r[k] / r.open_interest * 100 : null) : r[k];

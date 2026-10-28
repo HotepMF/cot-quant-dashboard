@@ -1,5 +1,5 @@
 import {
-  CORE_MARKETS, HAND_PARTICIPATION, HAND_POWER_PRODUCERS, HAND_RANGES, computeRows, defaultSignalSettings,
+  CORE_MARKETS, DEMO_FILTER_SETTINGS, HAND_PARTICIPATION, HAND_POWER_PRODUCERS, HAND_RANGES, computeRows,
   type RawRow, type WeekBar,
   type CrowdedRow, type HandCard, type HandSnapshot, type ParticipationRow, type RangeRow,
 } from "@workspace/cot-engine";
@@ -285,11 +285,11 @@ export function completedWeeks(b: DailyBars, now = new Date()): WeekBar[] {
   return out.filter(w => w.week < today || (w.week === today && late));
 }
 
-/** The site's default filter per report week (keyed by that week's Friday) from the site's own Legacy histories. */
+/** The demo account's frozen filter per report week (keyed by that week's Friday) from the site's own Legacy histories. */
 export function filterByWeek(history: SiteHistory): Record<string, 1 | -1 | 0> {
   const rows: RawRow[] = history.map(r => ({ date: r.date, large_traders: r.largeTraders, small_traders: r.smallTraders ?? 0, commercial_hedgers: r.commercialHedgers, ...(r.openInterest ? { open_interest: r.openInterest } : {}) }));
   const out: Record<string, 1 | -1 | 0> = {};
-  computeRows(rows, defaultSignalSettings).forEach(r => {
+  computeRows(rows, DEMO_FILTER_SETTINGS).forEach(r => {
     const t = Date.parse(`${r.date}T00:00:00Z`);
     const fri = new Date(t + ((5 - new Date(t).getUTCDay() + 7) % 7) * 86_400_000).toISOString().slice(0, 10);
     out[fri] = r.buy && !r.sell ? 1 : r.sell && !r.buy ? -1 : 0;

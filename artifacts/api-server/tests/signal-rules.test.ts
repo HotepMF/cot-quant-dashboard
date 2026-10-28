@@ -43,7 +43,7 @@ test("missing, failed, short and stale histories never masquerade as active or n
   const fixtures = [
     [undefined, "loading"],
     [{ rows: [], error: "Source failed" }, "error"],
-    [{ rows: history(1, 10), error: null }, "insufficient"],
+    [{ rows: history(1, defaultSignalSettings.lookback - 3), error: null }, "insufficient"],
     [{ rows: history().slice(0, -1), error: null }, "stale"],
   ] as const;
   for (const [data, status] of fixtures) {
@@ -77,7 +77,7 @@ test("OI normalization matches the indicator: Z of net / open interest, only wit
   const { computeRows, defaultSignalSettings, parseSignalSettings, previousDefaultSignalSettings } = await import("@workspace/cot-engine");
   const rows = Array.from({ length: 40 }, (_, i) => ({ date: `2026-${String(1 + (i % 12)).padStart(2, "0")}-01`, large_traders: 0, small_traders: 0,
     commercial_hedgers: 1000 + 37 * ((i * 7) % 11), open_interest: 20000 + 900 * ((i * 5) % 9) }));
-  const L = 16, s = { ...defaultSignalSettings, lookback: L };
+  const L = 16, s = { ...defaultSignalSettings, lookback: L, zMethod: "Open Interest Normalization" };
   const last = computeRows(rows, s).at(-1)!;
   const norm = rows.slice(-L).map(r => r.commercial_hedgers / r.open_interest);
   const mean = norm.reduce((a, b) => a + b, 0) / L;
@@ -88,8 +88,9 @@ test("OI normalization matches the indicator: Z of net / open interest, only wit
   const gap = rows.map((r, i) => i === 35 ? { ...r, open_interest: undefined } : r);
   assert.equal(computeRows(gap, s).at(-1)!.chZ, null, "a missing OI inside the window leaves no Z (no bridging)");
   assert.equal(computeRows(gap, { ...s, zMethod: "Standard Z-Score" }).at(-1)!.chZ, std.chZ, "standard Z ignores OI");
-  assert.deepEqual([defaultSignalSettings.signalMode, defaultSignalSettings.zMethod, defaultSignalSettings.lookback], ["Both (AND gate)", "Open Interest Normalization", 16]);
-  assert.equal(previousDefaultSignalSettings.lookback, 63);
+  assert.deepEqual([defaultSignalSettings.signalMode, defaultSignalSettings.zMethod, defaultSignalSettings.lookback, defaultSignalSettings.zThreshold, defaultSignalSettings.confluenceThreshold],
+    ["Both (AND gate)", "Standard Z-Score", 8, 2.25, 75]);
+  assert.deepEqual([previousDefaultSignalSettings.lookback, previousDefaultSignalSettings.zMethod], [16, "Open Interest Normalization"]);
   assert.equal(parseSignalSettings({ zMethod: "Standard Z-Score" }).zMethod, "Standard Z-Score");
   assert.throws(() => parseSignalSettings({ zMethod: "Winsorized" }), /Invalid zMethod/);
 });
