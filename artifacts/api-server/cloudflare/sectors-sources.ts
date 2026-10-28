@@ -12,6 +12,20 @@ export interface PriceSource {
 const isoDay = (seconds: number) => new Date(seconds * 1000).toISOString().slice(0, 10);
 
 /**
+ * In the evening Yahoo has the newest day's close but not yet its adjusted close. Fill those trailing gaps from the
+ * plain close, scaled by the last day that has both (the dividend adjustment carried forward), so the newest day
+ * isn't dropped.
+ */
+function withLatestAdjusted(adj: (number | null)[] | undefined, close: (number | null)[] | undefined) {
+  if (!adj || !close) return adj;
+  let k = adj.length - 1;
+  while (k >= 0 && adj[k] == null) k--;
+  if (k < 0 || k === adj.length - 1 || !close[k]) return adj;
+  const factor = adj[k]! / close[k]!;
+  return adj.map((v, i) => i > k && close[i] != null ? close[i]! * factor : v);
+}
+
+/**
  * Yahoo Finance chart endpoint (unofficial, no key). Yahoo's terms don't license redistribution; the site
  * shows derived end-of-day statistics from it as an accepted risk. Swap in a licensed provider before
  * donations, ads or paid features.
@@ -27,7 +41,8 @@ export const yahooPrices: PriceSource = {
     if (!response.ok) throw new Error(`Price source returned HTTP ${response.status} for ${ticker}.`);
     const body = await response.json() as { chart?: { result?: { timestamp?: number[]; indicators?: { quote?: { close?: (number | null)[] }[]; adjclose?: { adjclose?: (number | null)[] }[] } }[] } };
     const result = body.chart?.result?.[0];
-    const values = adjusted ? result?.indicators?.adjclose?.[0]?.adjclose : result?.indicators?.quote?.[0]?.close;
+    const raw = result?.indicators?.quote?.[0]?.close;
+    const values = adjusted ? withLatestAdjusted(result?.indicators?.adjclose?.[0]?.adjclose, raw) : raw;
     if (!result?.timestamp?.length || !values) throw new Error(`Price source returned no closes for ${ticker}.`);
     const out: DailyCloses = { dates: [], closes: [] };
     result.timestamp.forEach((t, i) => {

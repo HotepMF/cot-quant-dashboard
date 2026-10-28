@@ -72,6 +72,12 @@ export async function cftcParticipation(report: HandReport, code: string, catego
 
 export type DailyBars = { dates: string[]; open: number[]; high: number[]; low: number[]; close: number[] };
 
+/** Daily bars cut at `through` (drops the next session's partial bar). */
+export const upTo = (b: DailyBars, through: string): DailyBars => {
+  const n = b.dates.filter(d => d <= through).length;
+  return { dates: b.dates.slice(0, n), open: b.open.slice(0, n), high: b.high.slice(0, n), low: b.low.slice(0, n), close: b.close.slice(0, n) };
+};
+
 /** Recent daily bars from the Yahoo chart endpoint (same accepted-risk source as the sectors job). */
 export async function yahooBars(ticker: string, range = "3mo"): Promise<DailyBars> {
   const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}`);

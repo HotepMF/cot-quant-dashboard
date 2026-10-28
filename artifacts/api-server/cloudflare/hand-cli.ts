@@ -3,7 +3,7 @@ import { URL } from "node:url";
 import { CASE_MARKETS, CORE_MARKETS, HAND_PARTICIPATION, HAND_RANGE_TICKERS, HAND_TICKERS, type CaseLog } from "@workspace/cot-engine";
 import { buildHand, caseInputs, completeThrough, oscillatorSnapshot } from "./hand-compute";
 import { updateCaseLog } from "@workspace/cot-engine";
-import { cftcParticipation, siteHistories, treasuryCurve, yahooBars, type DailyBars } from "./hand-sources";
+import { cftcParticipation, siteHistories, treasuryCurve, upTo, yahooBars, type DailyBars } from "./hand-sources";
 import { statement } from "./database";
 import { RestD1 } from "./rest-d1";
 import { saveSnapshot } from "./sectors-cli";
@@ -34,9 +34,10 @@ async function main() {
   for (const spec of HAND_PARTICIPATION) participation.set(spec.code, await cftcParticipation(spec.report, spec.code, spec.categories, token));
   const curve = await treasuryCurve().catch(() => null);
   // Day-trader backdrop: context only, so a failure here leaves those panels empty rather than failing the run.
+  // Completed sessions only: in the evening Yahoo already carries tonight's live session as a bar dated tomorrow.
   const rangeBars = new Map<"ES" | "NQ", DailyBars>();
   for (const [market, ticker] of Object.entries(HAND_RANGE_TICKERS) as ["ES" | "NQ", string][]) {
-    try { rangeBars.set(market, await yahooBars(ticker)); } catch { console.warn(`Price unavailable: ${ticker}`); }
+    try { rangeBars.set(market, upTo(await yahooBars(ticker), completeThrough())); } catch { console.warn(`Price unavailable: ${ticker}`); }
   }
   const coreCodes = new Map(CORE_MARKETS.filter(m => m.code).map(m => [m.code!, m.symbol]));
   const histories = await siteHistories(coreCodes).catch(() => { console.warn("Site histories unavailable."); return undefined; });

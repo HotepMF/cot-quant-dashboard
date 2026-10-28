@@ -8,7 +8,8 @@ import { launchSectors, sectorsDue } from "../cloudflare/sectors-launcher";
 import { saveSnapshot } from "../cloudflare/sectors-cli";
 import { handleApi } from "../cloudflare/api";
 import { RestD1 } from "../cloudflare/rest-d1";
-import type { DailyCloses, PositioningHistory } from "../cloudflare/sectors-sources";
+import { yahooPrices, type DailyCloses, type PositioningHistory } from "../cloudflare/sectors-sources";
+import { upTo } from "../cloudflare/hand-sources";
 import type { Env } from "../cloudflare/types";
 
 /** Weekday closes from 2020-01-01, value(i) per trading day. */
@@ -126,4 +127,21 @@ test("Actual D1: the job's snapshot is stored with history, served by /api/secto
   globalThis.fetch = (async () => new Response(null, { status: 403 })) as typeof fetch;
   await assert.rejects(launchSectors(sql, env, wed1800 + 100 * 60_000), /HTTP 403/);
   assert.equal(await native.prepare("SELECT last_error FROM cot_cf_jobs").first("last_error"), "dispatch failed");
+});
+
+test("Newest day kept when Yahoo has its close but not yet its adjusted close (evening run)", async t => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = originalFetch; });
+  const ts = ["2026-10-23", "2026-10-26", "2026-10-27"].map(d => Date.parse(`${d}T13:30:00Z`) / 1000);
+  globalThis.fetch = (async () => Response.json({ chart: { result: [{ timestamp: ts,
+    indicators: { quote: [{ close: [100, 102, 104] }], adjclose: [{ adjclose: [99, 101, null] }] } }] } })) as typeof fetch;
+  const out = await yahooPrices.daily("XLE", true);
+  assert.deepEqual(out.dates, ["2026-10-23", "2026-10-26", "2026-10-27"]);
+  assert.ok(Math.abs(out.closes[2] - 104 * 101 / 102) < 1e-9, "close scaled by the last known adjustment");
+  assert.deepEqual((await yahooPrices.daily("^TNX", false)).closes, [100, 102, 104]);
+});
+
+test("Range bars stop at the last completed session (tonight's live bar dropped)", () => {
+  const b = { dates: ["2026-10-26", "2026-10-27", "2026-10-28"], open: [1, 2, 3], high: [1, 2, 3], low: [1, 2, 3], close: [1, 2, 3] };
+  assert.deepEqual(upTo(b, "2026-10-27"), { dates: ["2026-10-26", "2026-10-27"], open: [1, 2], high: [1, 2], low: [1, 2], close: [1, 2] });
 });

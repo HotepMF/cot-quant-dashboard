@@ -8,7 +8,7 @@ import { nfmt, nsigned, sectorLabel, shortDate, unavailableReason } from "@/hook
 
 export type SortKey = "setupScore" | "label" | "zScore" | "cycle" | "weeklyChange" | "oiChange" | "reportDate";
 export const sortOptions: { key: SortKey; label: string }[] = [
-  { key: "setupScore", label: "Setup score" }, { key: "label", label: "Market name" }, { key: "zScore", label: "Z-score (absolute)" },
+  { key: "setupScore", label: "Extremity score" }, { key: "label", label: "Market name" }, { key: "zScore", label: "Z-score (absolute)" },
   { key: "cycle", label: "Cycle rank" }, { key: "weeklyChange", label: "Weekly change" }, { key: "oiChange", label: "OI change" }, { key: "reportDate", label: "Report date" },
 ];
 
@@ -49,13 +49,13 @@ export function moveRead(participant: string, change: number | null) {
   return { buying, positive, text: `${participantShort(participant)} ${buying ? "buying" : "selling"}` };
 }
 
-/** A large one-week change in the selected group's net position, with its read. Describes the week; not a tested signal. */
+/** A large one-week change in the selected group's net position, with its read. Describes the week; not tested on its own. */
 export function MoveBadge({ change }: { change: number | null }) {
   const [settings] = useSharedSettings();
   const read = moveRead(settings.participant, change);
   if (!read) return <span className="badge neutral">Large move</span>;
   const why = settings.participant === "Commercial Hedgers" ? "The model follows commercials" : "The model leans against speculators";
-  return <span className={`badge ${read.positive ? "good" : "bad"}`} title={`Large one-week change: ${read.text.toLowerCase()}. ${why}, so this reads ${read.positive ? "positive" : "negative"}. It describes the week; on its own it is not a tested signal.`} data-testid="badge-large-move">
+  return <span className={`badge ${read.positive ? "good" : "bad"}`} title={`Large one-week change: ${read.text.toLowerCase()}. ${why}, so this reads ${read.positive ? "positive" : "negative"}. It describes the week and has not been tested on its own.`} data-testid="badge-large-move">
     {read.positive ? <ArrowUp size={11} /> : <ArrowDown size={11} />}{read.text}
   </span>;
 }
@@ -86,7 +86,7 @@ export function MarketTable({ rows, report, lookback, showSector, rank, sortKey,
         {head("label", "Market")}
         {showSector && <th>Sector</th>}
         <th>State</th>
-        {head("setupScore", "Setup score")}
+        {head("setupScore", "Extremity")}
         {head("zScore", "Z-score")}
         {head("cycle", "Cycle")}
         <th>CH / LT / ST cycle</th>

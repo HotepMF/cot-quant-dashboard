@@ -45,8 +45,8 @@ export const SECTOR_PANELS = [
  * futures and the sector vs SPY, 2002-2026 (backtest/indicator_grid/sector_links.py). Observed, not validated.
  */
 export const SECTOR_WATCH: Partial<Record<typeof SECTOR_PANELS[number]["id"], string>> = {
-  energy: "When our COT filter (AND gate on commercials, 16-week OI-normalized Z) turned bullish or bearish on crude, gasoline or natural gas, XLE tended to move the same way versus SPY over the next 4 to 13 weeks (natural gas: +2.3% over 4 weeks; gasoline: +1.5%). About 30 signals per market since 2002, and these markets often fire together.",
-  "utilities-rates": "When our COT filter (AND gate on commercials, 16-week OI-normalized Z) turned bullish on natural gas, XLU tended to lag SPY (about −1.7% over 4 weeks), the opposite of what we expected; higher gas is a fuel cost for utilities. About 30 signals since 2002.",
+  energy: "Tested on the site's previous default (AND gate on commercials, 16-week OI-normalized Z), not today's 8-week reading: when it reached a commercial extreme long or short on crude, gasoline or natural gas, XLE tended to move the same way versus SPY over the next 4 to 13 weeks (natural gas: +2.3% over 4 weeks; gasoline: +1.5%). About 30 cases per market since 2002, and these markets often reach extremes together.",
+  "utilities-rates": "Tested on the site's previous default (AND gate on commercials, 16-week OI-normalized Z), not today's 8-week reading: when it reached a commercial extreme long on natural gas, XLU tended to lag SPY (about −1.7% over 4 weeks), the opposite of what we expected; higher gas is a fuel cost for utilities. About 30 cases since 2002.",
 };
 
 /** Futures shown in each sector's matrix row ("underneath"); sectors not listed have no clean link. */

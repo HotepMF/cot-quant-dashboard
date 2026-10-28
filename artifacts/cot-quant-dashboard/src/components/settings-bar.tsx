@@ -22,7 +22,7 @@ export function SettingsBar({ display = false, id }: { display?: boolean; id?: s
   const closePrevious = () => { dismissPreviousModel(); setPrevious(null); };
   const toggles: [string, keyof Settings][] = [
     ["Z-score detection", "zEnabled"], ["Small trader confirmation", "requireSmall"], ["Large position change", "changeEnabled"],
-    ...(display ? [["Buy / sell labels", "showSignals"], ["Chart label", "showPaneLabel"]] as [string, keyof Settings][] : []),
+    ...(display ? [["Extreme labels", "showSignals"], ["Chart label", "showPaneLabel"]] as [string, keyof Settings][] : []),
   ];
   return <section id={id} className="card scan-settings print-hidden" data-testid="settings-bar">
     <button className="scan-settings-head" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid="button-toggle-settings">

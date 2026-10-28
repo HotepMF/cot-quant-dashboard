@@ -63,7 +63,7 @@ export function HowItWorksPage() {
             <li><b>Z-score</b>: how far today's net position sits from its average over the lookback (8 weeks by default, using the raw net position; see The default model), in standard deviations. ±2 marks an extreme.</li>
             <li><b>Cycle rank</b>: where today's net position sits between the lowest (0%) and highest (100%) reading in the market's full history.</li>
             <li><b>Confluence</b>: commercials and large traders at opposite extremes of their cycle ranks at the same time.</li>
-            <li><b>Watch</b> with a <b>buying / selling</b> tag: no setup, but the selected group's net position changed unusually much in one week (more than half the Z threshold in standard deviations of its recent range). Green ▲ reads positive and red ▼ negative, the way the model reads that group: it follows commercials and leans against speculators, so "Commercials buying" or "Large specs selling" is green. It describes the week and can be the start of a build toward a signal; on its own it is not a tested signal.</li>
+            <li><b>Watch</b> with a <b>buying / selling</b> tag: no setup, but the selected group's net position changed unusually much in one week (more than half the Z threshold in standard deviations of its recent range). Green ▲ reads positive and red ▼ negative, the way the model reads that group: it follows commercials and leans against speculators, so "Commercials buying" or "Large specs selling" is green. It describes the week and can be the start of a build toward an extreme; it has not been tested on its own.</li>
           </ul>
           <p>Readings are <b>mechanical rule states</b> from the data, not recommendations.</p>
         </Section>
@@ -85,8 +85,8 @@ export function HowItWorksPage() {
         <Section id="settings" title="Settings">
           <p>The settings bar sits under the market picker on market detail and at the top of Sector positioning and the Watchlist. One set of settings drives all three pages, and the site remembers yours. Click the bar to open it; "site default" or "custom" shows which you are using.</p>
           <ul>
-            <li><b>Participant</b>: the group whose Z-score gates the signal. Commercial hedgers are followed (an extreme long is bullish); large and small traders are faded (an extreme long is bearish).</li>
-            <li><b>Signal mode</b>: <b>Z-Score Only</b> fires when the participant's net position is an extreme for the lookback. <b>COT Confluence</b> fires when commercials and large traders sit at opposite ends of their full history (cycle rank), with small traders as optional confirmation. <b>Both (AND gate)</b> needs the two to agree in the same week. It is the strictest mode and the site default.</li>
+            <li><b>Participant</b>: the group whose Z-score sets the reading. Commercial hedgers are read in their own direction (green when extreme long); large and small traders are read against theirs (red when extreme long).</li>
+            <li><b>Signal mode</b>: <b>Z-Score Only</b> shows a reading when the participant's net position is an extreme for the lookback. <b>COT Confluence</b> shows a reading when commercials and large traders sit at opposite ends of their full history (cycle rank), with small traders as optional confirmation. <b>Both (AND gate)</b> needs the two to agree in the same week. It is the strictest mode and the site default.</li>
             <li><b>Z calculation</b>: <b>Standard</b> uses the raw net position. <b>OI normalization</b> divides each week's net position by that week's open interest first, so a market that has grown or shrunk is compared fairly. A week with missing open interest leaves no Z until the window is complete again.</li>
             <li><b>Lookback</b>: how many weeks the Z-score compares against (8 by default).</li>
             <li><b>Z threshold</b>: how many standard deviations count as an extreme (2.25 by default).</li>
@@ -95,7 +95,7 @@ export function HowItWorksPage() {
             <li><b>Switches</b>: Z-score detection on or off; small trader confirmation for confluence; large position change flags a weekly change larger than half the Z threshold in standard deviations.</li>
             <li><b>Market detail display</b>: buy / sell labels and the chart label, the chart highlight style (shapes, background or both), and the table text size. These change what you see, not the calculations.</li>
           </ul>
-          <p>A signal is a mechanical rule state, not a recommendation. See The default model above for what our tests found about these settings.</p>
+          <p>A reading is a mechanical rule state, not a recommendation. See The default model above for what our tests found about these settings.</p>
         </Section>
 
         <Section id="markets" title="Which markets">
@@ -115,7 +115,7 @@ export function HowItWorksPage() {
             <li><b>Positioning monitor</b>: where funds sit in their 3-year range, as a percentile. Funds are managed money for commodities and leveraged funds for financial futures, shown against producers or asset managers. The 90th percentile or above, or the 10th or below, is labeled crowded. A low reading can still be a net long.</li>
           </ul>
           <p>Panel text is generated from the numbers each day and describes what is happening, not what comes next.</p>
-          <p><b>Watch notes</b> report co-movement we found between the site's default COT filter on a sector's futures and that sector versus SPY, 2002–2026. Energy is the one consistent link: XLE has tended to move with the filter on crude, gasoline and natural gas. Utilities moved the opposite way to a bullish natural-gas filter. Metals showed nothing for materials or industrials. Samples are small (about 30 signals per market) and we checked many links, so treat these as things to watch, not rules.</p>
+          <p><b>Watch notes</b> report co-movement we found between the site's previous default COT filter (16-week, OI-normalized) on a sector's futures and that sector versus SPY, 2002–2026. Energy is the one consistent link: XLE has tended to move with the filter on crude, gasoline and natural gas. Utilities moved the opposite way to a commercial extreme long in natural gas. Metals showed nothing for materials or industrials. Samples are small (about 30 cases per market) and we checked many links, so treat these as things to watch, not rules.</p>
         </Section>
 
         <Section id="invisible-hand" title="The Invisible Hand">
@@ -142,7 +142,7 @@ export function HowItWorksPage() {
             <li><b>The gauge</b> places today's carry within that market's own 2002–2024 history (VIX: 2004–2026). The colored ends are its deepest 20% each way. A gold curve near flat can read "deep backwardation for gold" while still in contango, because gold is almost always in contango.</li>
             <li><b>Volatility gauge</b>: how big moves are now compared with what is usual for that market. It uses the front contract's last 20 daily moves, annualised, divided by the market's own 5-year normal (roll days removed). Under 0.75× reads <b>Calm</b>, 0.75–1.25× <b>Normal</b>, 1.25–1.75× <b>Elevated</b>, and 1.75× or more <b>Extreme</b>. These are round reading bands, not tested signals. "Typical day" is one day's usual move at the current volatility, in percent and in dollars for one contract; about two days in three stay inside it.</li>
             <li><b>What we found</b>: in commodities, volatility over the next 4 weeks ran about 19% above a flat curve in deep backwardation, and about 13% above in deep contango (2002–2024, 23 markets). That matches published research: tight inventories make prices jumpier (Fama and French 1988; Ng and Pirrong 1994), and volatility rises with the curve's slope in both directions (Kogan, Livdan and Yaron 2009). For index, rate, currency and crypto futures the curve mostly reflects interest rates and dividends, and we found no effect.</li>
-            <li><b>What we did not find</b>: using the curve as a filter on the site's COT signals did not improve them in our pre-registered test. Commercials are usually positioned against the curve, so the COT signal already carries most of what the curve says. Use the curve for risk (stops, size), not for direction.</li>
+            <li><b>What we did not find</b>: using the curve as a filter on the site's COT readings did not improve them in our pre-registered test. Commercials are usually positioned against the curve, so the COT reading already carries most of what the curve says. Use the curve for risk (stops, size), not for direction.</li>
             <li><b>Limits</b>: the historical ranges come from research data that does not always use the front two contracts, so they are close, not exact. Prices are Yahoo end-of-day (VIX: Cboe settlements). Lumber has too little history for a range. The site saves every day's curve, so the ranges can move to our own data once there is enough.</li>
           </ul>
         </Section>

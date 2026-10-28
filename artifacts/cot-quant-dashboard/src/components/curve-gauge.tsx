@@ -91,7 +91,9 @@ export function CurvePanel({ code }: { code?: string }) {
   const symbol = core?.symbol.split(" ")[0];
   if (!symbol || (!CURVE_CUTOFFS[symbol] && symbol !== "LBR")) return null;
   const row = query.data?.markets.find(m => m.symbol === symbol);
-  const head = <div className="card-head"><div><h2 className="panel-title">Curve &amp; volatility</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Backwardation vs contango, and how big moves are now · end of day{query.data ? ` · ${query.data.asOf}` : ""}</div></div><span className="cg-label">Measured · not a signal</span></div>;
+  // This market's own settlement date: markets close on different days (holidays, Sunday sessions), so the snapshot's date can be later.
+  const asOf = row?.contracts[0]?.date ?? query.data?.asOf;
+  const head = <div className="card-head"><div><h2 className="panel-title">Curve &amp; volatility</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Backwardation vs contango, and how big moves are now · end of day{asOf ? ` · ${asOf}` : ""}</div></div><span className="cg-label">Measured · not a signal</span></div>;
   if (!row) return <div className="card section cg-card" data-testid="curve-panel">{head}<div className="card-body subtle" style={{ fontSize: 12 }}>{query.isLoading ? "Loading the curve…" : "No curve saved for this market yet. The archive updates each weekday evening."}</div></div>;
   const zone = curveZone(symbol, row.carry), [near, far] = row.contracts, pv = POINT_VALUE.get(symbol);
   const vs = volState(row.vol?.ratio);
@@ -156,6 +158,6 @@ export function StretchedCurves() {
         </tr>;
       })}</tbody>
     </table></div>
-    <div className="chart-foot">Deep = beyond the 20th / 80th percentile of the market's own carry. In commodities, both ends have come with higher volatility (backwardation most). Not a trade filter: it did not improve the COT signals. <Link href="/how-it-works#curve">Method</Link></div></div>
+    <div className="chart-foot">Deep = beyond the 20th / 80th percentile of the market's own carry. In commodities, both ends have come with higher volatility (backwardation most). Not a trade filter: it did not improve the COT readings. <Link href="/how-it-works#curve">Method</Link></div></div>
   </section>;
 }

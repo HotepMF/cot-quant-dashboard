@@ -63,7 +63,7 @@ export function SignalWatchlistPage() {
     ...(counts.pending ? [{ id: "loading" as const, label: `Queued ${counts.pending}` }] : []),
   ];
 
-  return <ScannerShell screener={s} eyebrow="Core markets / Watchlist" title="Watchlist" lede="Directional setups and positioning / open-interest alerts across the core watchlist markets. Directional setups rank by rule extremity.">
+  return <ScannerShell screener={s} eyebrow="Core markets / Watchlist" title="Watchlist" lede="Extreme readings and large positioning / open-interest changes across the core watchlist markets. Extreme readings rank by how far past the rule they are.">
     <ScoreExplainer />
     <div className="card wl-filters print-hidden">
       <div className="wl-row">
@@ -91,10 +91,10 @@ export function SignalWatchlistPage() {
           filtered.length ? <MarketTable rows={filtered} report={s.report} lookback={s.lookback} showSector rank sortKey={sortKey} desc={desc} onSort={onSort} testId="table-watchlist" /> :
           <div className="scan-empty big">
             {s.scanning
-              ? <><b>Scan still running</b><span>{s.data?.processed ?? 0} of {s.data?.total || "…"} markets processed. Matching setups may still appear; this is not a no-signal result.</span></>
+              ? <><b>Scan still running</b><span>{s.data?.processed ?? 0} of {s.data?.total || "…"} markets processed. Matching readings may still appear; this is not a no-reading result.</span></>
               : s.query.isError && !s.rows.length
                 ? <><b>Scan unavailable</b><span>The screener could not be loaded. Use Retry above.</span></>
-                 : <><b>No markets match</b><span>{status === "active" ? "No active signals under the current rule set and filters." : "Nothing matches these filters."}</span><button className="btn" onClick={reset} data-testid="button-reset-filters">Show all markets</button></>}
+                 : <><b>No markets match</b><span>{status === "active" ? "No extreme readings under the current settings and filters." : "Nothing matches these filters."}</span><button className="btn" onClick={reset} data-testid="button-reset-filters">Show all markets</button></>}
           </div>}
       </div>
     </section>

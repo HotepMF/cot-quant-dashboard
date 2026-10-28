@@ -80,7 +80,7 @@ function ScanStatus({ screener }: { screener: Screener }) {
         {err
           ? (screener.refreshError instanceof Error ? screener.refreshError.message : data?.message ?? (query.error instanceof Error ? query.error.message : "The screener request failed.")) + (data?.markets.length ? " Previously returned rows remain visible with their original dates." : "")
           : scanning
-            ? `${processed.toLocaleString()} of ${total ? total.toLocaleString() : "…"} core markets processed. Markets not yet processed are marked queued, not counted as no-signal.`
+            ? `${processed.toLocaleString()} of ${total ? total.toLocaleString() : "…"} core markets processed. Markets not yet processed are marked queued, not counted as no reading.`
             : data ? `${eligible.toLocaleString()} of ${data.total.toLocaleString()} core markets have current, sufficient history for this rule set${data.total - eligible ? `; ${data.total - eligible} unavailable` : ""}. ${data.message ?? ""}` : "Requesting the official market list…"}
       </span>
       {scanning && <div className="scan-progress" aria-label={`Scan progress ${pct}%`}><span style={{ transform: `scaleX(${pct / 100})` }} /></div>}
@@ -94,6 +94,6 @@ function ScanStatus({ screener }: { screener: Screener }) {
 export function ScoreExplainer() {
   return <div className="scan-explain" data-testid="text-score-explainer">
     <Info size={15} />
-    <div><b>Setup score 0–100</b> measures directional rule extremity: average cycle-rank extremity for confluence, Z-score size relative to its threshold for Z mode, and the mean of both for the AND gate. It is <b>not a confidence level or a probability of return</b>. Position / OI alerts without a directional setup have no setup score. Only current-report markets with at least the configured lookback of weekly observations can produce active signals; cycle ranks use the history available from CFTC.</div>
+    <div><b>Extremity score 0–100</b> measures how far past the rule a reading is: average cycle-rank extremity for confluence, Z-score size relative to its threshold for Z mode, and the mean of both for the AND gate. It is <b>not a confidence level or a probability of return</b>. Position / OI alerts without an extreme reading have no score. Only current-report markets with at least the configured lookback of weekly observations can show a reading; cycle ranks use the history available from CFTC.</div>
   </div>;
 }
