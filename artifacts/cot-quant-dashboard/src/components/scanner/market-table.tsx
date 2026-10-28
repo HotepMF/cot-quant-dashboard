@@ -29,11 +29,11 @@ export function sortRows(rows: ScanRow[], key: SortKey, desc: boolean) {
 export function SignalBadge({ row }: { row: ScanRow }) {
   if (row.status === "loading") return <span className="badge neutral scan-pulse">Queued</span>;
   if (row.status !== "ready") return <span className="badge warn">{row.status === "insufficient" ? "Short history" : row.status === "stale" ? "Stale" : "Error"}</span>;
-  if (row.signal === "bullish") return <span className="badge good"><ArrowUp size={11} />Bullish</span>;
-  if (row.signal === "bearish") return <span className="badge bad"><ArrowDown size={11} />Bearish</span>;
+  if (row.signal === "bullish") return <span className="badge good"><ArrowUp size={11} />Extreme long</span>;
+  if (row.signal === "bearish") return <span className="badge bad"><ArrowDown size={11} />Extreme short</span>;
   if (row.signal === "unavailable") return <span className="badge warn">Unavailable</span>;
   if (row.flagged) return <span className="badge warn" title="No buy or sell setup, but something notable changed this week: see the tag beside it">Watch</span>;
-  return <span className="badge neutral">No setup</span>;
+  return <span className="badge neutral">No reading</span>;
 }
 
 /** Who moved, as the model reads it: the selected group's short name. */

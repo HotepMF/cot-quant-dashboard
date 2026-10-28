@@ -63,7 +63,7 @@ export function SignalWatchlistPage() {
     ...(counts.pending ? [{ id: "loading" as const, label: `Queued ${counts.pending}` }] : []),
   ];
 
-  return <ScannerShell screener={s} eyebrow="Core markets / Signal watchlist" title="Signal watchlist" lede="Directional setups and positioning / open-interest alerts across the core watchlist markets. Directional setups rank by rule extremity.">
+  return <ScannerShell screener={s} eyebrow="Core markets / Watchlist" title="Watchlist" lede="Directional setups and positioning / open-interest alerts across the core watchlist markets. Directional setups rank by rule extremity.">
     <ScoreExplainer />
     <div className="card wl-filters print-hidden">
       <div className="wl-row">
@@ -75,9 +75,9 @@ export function SignalWatchlistPage() {
       <div className="wl-chips">
         <Chips<StatusFilter> label="Status" value={status} onChange={setStatus} options={statusOptions} />
         <span className="wl-sep" aria-hidden />
-        <Chips<Direction> label="Direction" value={direction} onChange={setDirection} options={[{ id: "all", label: "Any" }, { id: "bullish", label: "Bullish" }, { id: "bearish", label: "Bearish" }, { id: "none", label: "No setup" }]} />
+        <Chips<Direction> label="Direction" value={direction} onChange={setDirection} options={[{ id: "all", label: "Any" }, { id: "bullish", label: "Extreme long" }, { id: "bearish", label: "Extreme short" }, { id: "none", label: "No reading" }]} />
         <span className="wl-sep" aria-hidden />
-        <Chips<SignalType> label="Signal type" value={signalType} onChange={setSignalType} options={[{ id: "all", label: "All signals" }, { id: "directional", label: "Setups" }, { id: "position", label: "Position moves" }, { id: "oi", label: "OI alerts" }]} />
+        <Chips<SignalType> label="Type" value={signalType} onChange={setSignalType} options={[{ id: "all", label: "All" }, { id: "directional", label: "Extremes" }, { id: "position", label: "Position moves" }, { id: "oi", label: "OI alerts" }]} />
       </div>
     </div>
     <div className="scan-bar">

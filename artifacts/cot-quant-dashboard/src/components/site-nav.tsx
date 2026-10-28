@@ -5,13 +5,13 @@ import { Activity, BarChart3, CircleHelp, Hand, Layers, LayoutGrid, ListOrdered,
 export const workspaceSections = [
   { id: "summary", label: "Market overview", icon: BarChart3 },
   { id: "positioning", label: "Positioning", icon: Waves },
-  { id: "signals", label: "Signal analysis", icon: Activity },
+  { id: "signals", label: "Weekly readings", icon: Activity },
   { id: "configuration", label: "Settings", icon: Settings2 },
 ];
 
 export const researchLinks = [
-  { href: "/sector-signals", label: "Sector signals", short: "Sectors", id: "sector-signals", icon: LayoutGrid },
-  { href: "/signal-watchlist", label: "Signal watchlist", short: "Watchlist", id: "signal-watchlist", icon: ListOrdered },
+  { href: "/sector-signals", label: "Sector positioning", short: "Sectors", id: "sector-signals", icon: LayoutGrid },
+  { href: "/signal-watchlist", label: "Watchlist", short: "Watchlist", id: "signal-watchlist", icon: ListOrdered },
   { href: "/sectors", label: "SPDR sectors", short: "SPDR", id: "sectors", icon: Layers },
   { href: "/invisible-hand", label: "The Invisible Hand", short: "Hand", id: "invisible-hand", icon: Hand },
   { href: "/how-it-works", label: "How it works", short: "Info", id: "how-it-works", icon: CircleHelp },

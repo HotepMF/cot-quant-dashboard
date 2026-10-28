@@ -4,7 +4,7 @@ import { CURVE_CUTOFFS, CURVE_VOL_EFFECT, DEMO_MARKETS, coreMarketByCode, curveG
 import type { CurveRow, CurveSnapshot, CurveZone } from "@workspace/cot-engine";
 import "./curve-gauge.css";
 
-/** Dollars per 1.00 price move, for the spread in dollars. Demo markets plus the three it does not trade. */
+/** Dollars per 1.00 price move, for the spread in dollars (contract specs), plus three markets not in that list. */
 const POINT_VALUE = new Map<string, number>([...DEMO_MARKETS.map(m => [m.symbol, m.pointValue] as [string, number]), ["VX", 1000], ["NKD", 5], ["DX", 1000]]);
 const LABEL = new Map([...coreMarketByCode.values()].map(m => [m.symbol.split(" ")[0], m.label]));
 export const curveLabel = (symbol: string) => LABEL.get(symbol) ?? symbol;

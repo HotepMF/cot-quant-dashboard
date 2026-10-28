@@ -238,7 +238,7 @@ function Dashboard() {
     commercial_hedgers_net: r.commercial_hedgers, open_interest: r.open_interest ?? "",
     large_z: r.ltZ, small_z: r.stZ, commercial_z: r.chZ, large_cycle_pct: r.ltCycle, small_cycle_pct: r.stCycle, commercial_cycle_pct: r.chCycle,
     commercial_delta: r.chDelta, commercial_delta_percentile: r.chDeltaPct, commercial_delta_z: r.chDeltaZ,
-    signal: r.buy ? `Bullish ${signalKind(settings.signalMode)}` : r.sell ? `Bearish ${signalKind(settings.signalMode)}` : "No signal", oi_change_pct: r.oiMove,
+    signal: r.buy ? `Extreme long (${signalKind(settings.signalMode)})` : r.sell ? `Extreme short (${signalKind(settings.signalMode)})` : "No reading", oi_change_pct: r.oiMove,
   }));
   const exportButton = (name: string, records: Record<string, unknown>[] = exportRows()) => <button className="icon-btn print-hidden" title={`Export ${name} chart data as CSV`} aria-label={`Export ${name} chart data as CSV`} data-testid={`export-${name}-csv`} onClick={() => makeCsv(records, `cot-${name}.csv`)}><Download size={15} /></button>;
   const chartTick = { fill: "hsl(var(--muted-foreground))", fontSize: 11, fontFamily: "DM Mono" };
@@ -261,7 +261,7 @@ function Dashboard() {
   };
   const selectedZ = latest ? (settings.participant === "Large Traders" ? latest.ltZ : settings.participant === "Small Traders" ? latest.stZ : latest.chZ) : null;
   const signalPrefix = settings.signalMode === "Z-Score Only" ? "Z-score" : settings.signalMode === "Both (AND gate)" ? "AND-gate" : "confluence";
-  const signalLabel = latest?.buy ? `Bullish ${signalPrefix}` : latest?.sell ? `Bearish ${signalPrefix}` : "No aligned signal";
+  const signalLabel = latest?.buy ? `Extreme long · ${signalPrefix}` : latest?.sell ? `Extreme short · ${signalPrefix}` : "No reading this report";
   const signalTone = latest?.buy ? "good" : latest?.sell ? "bad" : "neutral";
   const selectedPosition = latest ? asModel(latest, modelKey) ?? 0 : 0;
   const showSignalMark = Boolean(latest && ((settings.showSignals && (latest.buy || latest.sell)) || latest.largeMove));
@@ -460,7 +460,7 @@ function Dashboard() {
                 <td className="mono">{formatDate(r.date)}</td><td className={`mono ${changeTone(r.large_traders)}`}>{signed(r.large_traders)}</td><td className={`mono ${changeTone(r.small_traders)}`}>{signed(r.small_traders)}</td><td className={`mono ${changeTone(r.commercial_hedgers)}`}>{signed(r.commercial_hedgers)}</td>
                 <td className={`mono weekly-change ${changeTone(r.chDelta)}`}>{signed(r.chDelta)}</td><td className="mono">{r.chZ == null ? "—" : `${signed(r.chZ, 2)}σ`}</td><td className="mono">{r.chDeltaPct == null ? "—" : `${fmt(r.chDeltaPct, 0)}th / ${signed(r.chDeltaZ, 2)}σ`}</td>
                 <td className="mono"><span className={cycleTone(r.ltCycle)}>{fmt(r.ltCycle, 0)}</span> / <span className={cycleTone(r.chCycle)}>{fmt(r.chCycle, 0)}%</span></td><td className={`mono weekly-change ${changeTone(r.oiMove)}`}>{r.oiMove == null ? "—" : `${signed(r.oiMove, 1)}%`}</td>
-                <td><span className={`badge ${r.buy ? "good" : r.sell ? "bad" : r.largeMove ? (moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.positive ? "good" : "bad") : "neutral"}`}>{!settings.showSignals && (r.buy || r.sell) ? "Signal labels hidden" : r.buy ? `Bullish ${signalPrefix}` : r.sell ? `Bearish ${signalPrefix}` : r.largeMove ? `Large change · ${moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.text.toLowerCase() ?? "no direction"}` : "No signal"}</span></td>
+                <td><span className={`badge ${r.buy ? "good" : r.sell ? "bad" : r.largeMove ? (moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.positive ? "good" : "bad") : "neutral"}`}>{!settings.showSignals && (r.buy || r.sell) ? "Signal labels hidden" : r.buy ? `Extreme long · ${signalPrefix}` : r.sell ? `Extreme short · ${signalPrefix}` : r.largeMove ? `Large change · ${moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.text.toLowerCase() ?? "no direction"}` : "No signal"}</span></td>
               </tr>)}</tbody>
             </table></div>}
             <div className="chart-foot">Position Z uses SMA and population standard deviation of the configured rolling window including the current week. Cycle rank uses the full available history.</div>
