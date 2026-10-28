@@ -48,3 +48,17 @@ test("Case log: a case is added once its release Friday closes, and gets its out
   const flat = updateCaseLog(null, [{ ...input, dir: 0 }], "2026-07-24", "2026-07-01");
   assert.equal(flat.cases.length, 0, "no reading, no case");
 });
+
+test("Case log waits for the real release-Friday close (an empty Friday bar is not replaced by Thursday's)", () => {
+  const b = bars(Array.from({ length: 300 }, (_, i) => 100 + i * 0.1), "2025-06-02");
+  const fri = b.dates.indexOf("2026-07-17");
+  const missingFriday: Bars = { dates: b.dates.slice(0, fri), close: b.close.slice(0, fri), high: b.high.slice(0, fri), low: b.low.slice(0, fri) };
+  const input: CaseInput = { code: "X", symbol: "XX", reportDate: "2026-07-14", dir: 1, z: 2.6, commercialCycle: 90, largeCycle: 10, bars: missingFriday };
+  assert.equal(updateCaseLog(null, [input], "2026-07-17", "2026-07-01").cases.length, 0, "Friday's close not in the data yet: wait");
+  const withFriday = updateCaseLog(null, [{ ...input, bars: b }], "2026-07-17", "2026-07-01");
+  assert.equal(withFriday.cases[0].entry, b.close[fri], "entry is the Friday close");
+  // a holiday Friday: no bar that day, but the market traded the next Monday, so the Thursday close stands in
+  const holiday: Bars = { dates: [...b.dates.slice(0, fri), ...b.dates.slice(fri + 1)], close: [...b.close.slice(0, fri), ...b.close.slice(fri + 1)],
+    high: [...b.high.slice(0, fri), ...b.high.slice(fri + 1)], low: [...b.low.slice(0, fri), ...b.low.slice(fri + 1)] };
+  assert.equal(updateCaseLog(null, [{ ...input, bars: holiday }], "2026-07-20", "2026-07-01").cases[0].entry, b.close[fri - 1]);
+});
