@@ -64,6 +64,16 @@ export type CaseInput = { code: string; symbol: string; reportDate: string; dir:
 
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const lastOnOrBefore = (b: Bars, d: string) => { let i = -1; for (let k = 0; k < b.dates.length && b.dates[k] <= d; k++) i = k; return i; };
+/**
+ * The bar for date d once its close is final: d itself, or (when d had no session, e.g. a holiday) the last bar before
+ * it, but only once a later bar shows the market has moved on. -1 while d's close is still missing.
+ */
+const closeFor = (b: Bars, d: string, completeThrough: string) => {
+  const i = lastOnOrBefore(b, d);
+  if (i < 0 || d > completeThrough) return -1;
+  if (b.dates[i] === d) return i;
+  return b.dates.some(x => x > d && x <= completeThrough) ? i : -1;
+};
 
 /** 52-week vol of weekly (Friday) log returns up to and including date d. */
 function weeklyVol(b: Bars, d: string): number | null {
@@ -91,8 +101,8 @@ export function updateCaseLog(prev: CaseLog | null, inputs: CaseInput[], complet
   for (const x of inputs) {
     if (x.dir !== 0 && x.reportDate >= log.startedReport && !byId.has(`${x.code}:${x.reportDate}`)) {
       const fri = addDays(x.reportDate, 3);
-      const i = lastOnOrBefore(x.bars, fri);
-      if (fri <= completeThrough && i >= 0 && x.bars.dates[i] >= addDays(fri, -4)) {
+      const i = closeFor(x.bars, fri, completeThrough);
+      if (i >= 0 && x.bars.dates[i] >= addDays(fri, -4)) {
         const uo = ultimateOscillator(x.bars, i), wr = williamsR(x.bars, i);
         const c: CotCase = { id: `${x.code}:${x.reportDate}`, code: x.code, symbol: x.symbol, reportDate: x.reportDate, releaseFriday: fri, dir: x.dir,
           z: x.z, commercialCycle: x.commercialCycle, largeCycle: x.largeCycle, uo: uo == null ? null : Number(uo.toFixed(1)), wr: wr == null ? null : Number(wr.toFixed(1)),
@@ -106,8 +116,8 @@ export function updateCaseLog(prev: CaseLog | null, inputs: CaseInput[], complet
     if (c.outcome) continue;
     const b = barsByCode.get(c.code);
     const target = addDays(c.releaseFriday, 7);
-    if (!b || target > completeThrough) continue;
-    const j = lastOnOrBefore(b, target);
+    if (!b) continue;
+    const j = closeFor(b, target, completeThrough);
     if (j < 0 || b.dates[j] <= c.releaseFriday) continue;
     const move = c.dir * Math.log(b.close[j] / c.entry);
     c.outcome = { date: b.dates[j], exit: b.close[j], movePct: Number((move * 100).toFixed(3)), moveVol: c.weeklyVol ? Number((move / c.weeklyVol).toFixed(3)) : null, wentItsWay: move > 0 };
