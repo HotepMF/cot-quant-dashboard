@@ -1,4 +1,4 @@
-import { HISTORY_RULES, type RawRow } from "@workspace/cot-engine";
+import { HISTORY_RULES, isMidweekReport, type RawRow } from "@workspace/cot-engine";
 import type { History, Market, ReportKey } from "./types";
 
 const datasets = { futures: "6dca-aqww", combined: "jun7-fc8e" };
@@ -33,8 +33,9 @@ async function query<T>(report: ReportKey, statement: string, token?: string): P
   return result.rows;
 }
 export async function officialMarkets(report: ReportKey, token?: string) {
-  const newest = await query<{ report_date_as_yyyy_mm_dd: string }>(report, "SELECT report_date_as_yyyy_mm_dd ORDER BY report_date_as_yyyy_mm_dd DESC LIMIT 1", token);
-  const rawDate = newest[0]?.report_date_as_yyyy_mm_dd;
+  // The newest weekly report: a Monday-dated mid-week report (twice-weekly schedule) is not the weekly row.
+  const recent = await query<{ report_date_as_yyyy_mm_dd: string }>(report, "SELECT report_date_as_yyyy_mm_dd GROUP BY report_date_as_yyyy_mm_dd ORDER BY report_date_as_yyyy_mm_dd DESC LIMIT 4", token);
+  const rawDate = recent.map(r => r.report_date_as_yyyy_mm_dd).find(d => d && Number.isFinite(Date.parse(d)) && !isMidweekReport(new Date(d).toISOString().slice(0, 10)));
   if (!rawDate || !Number.isFinite(Date.parse(rawDate))) throw new Error("Official report date is unavailable.");
   const reportAsOf = new Date(rawDate).toISOString().slice(0, 10);
   const rows = await query<{ market_and_exchange_names: string; cftc_contract_market_code: string }>(report,
@@ -68,6 +69,7 @@ export async function officialHistories(report: ReportKey, reportAsOf: string, m
       const n = [row.large_traders, row.small_traders, row.commercial_hedgers].map(numeric);
       if (!row.report_date_as_yyyy_mm_dd || !Number.isFinite(Date.parse(row.report_date_as_yyyy_mm_dd)) || !n.every(Number.isFinite)) throw new Error("Invalid official positioning observation.");
       const date = new Date(row.report_date_as_yyyy_mm_dd).toISOString().slice(0, 10);
+      if (isMidweekReport(date)) continue;   // one row per week: mid-week reports stay out of the weekly series
       const trimBefore = HISTORY_RULES[market.code]?.trimBefore;
       if (trimBefore && date < trimBefore) continue;
       const oi = numeric(row.open_interest);

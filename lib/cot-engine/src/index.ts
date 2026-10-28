@@ -132,6 +132,7 @@ export { CALENDAR_THROUGH, EVENT_EFFECTS, eventTags, marketEvents } from "./cale
 export type { EventKind, EventTags, MarketEvent, RangeEffect } from "./calendar";
 export { CURVE_CUTOFFS, CURVE_DEPTH, CURVE_MARKETS, CURVE_VOL_EFFECT, curveCandidates, curveCarry, curveGauge, curveKind, curveSpread, curveZone, realisedVol, VOL_STATES, volGauge, volState } from "./curves";
 export type { CurveContract, CurvePairHistory, CurveRow, CurveSnapshot, CurveZone, VolState } from "./curves";
+export { isMidweekReport, releaseFriday } from "./release";
 export { CASE_MARKETS, COT8_RECORD, tally, ultimateOscillator, updateCaseLog, uoPullback, williamsR, wrPullback } from "./case-log";
 export type { Bars, CaseInput, CaseLog, CotCase, OscillatorSnapshot, Tally } from "./case-log";
 export { DEMO_MARKETS, DEMO_RULES_VERSION, DEMO_STATE_VERSION, DEMO_START_BALANCE, DEMO_TARGET_SIGMA, advanceDemo, emptyDemo, stepMarket, triggerPattern, weeklySigma } from "./demo";

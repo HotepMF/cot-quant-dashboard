@@ -283,7 +283,7 @@ function Dashboard() {
         <div style={{ marginTop: 9, display: "flex", alignItems: "center", gap: 8, fontSize: 11 }}>
           <span className="dot" style={{ background: liveActive ? "#65c7a4" : liveFailure ? "#e27667" : "#e6a752" }} />{liveActive ? "Official CFTC data" : liveFailure ? "CFTC connection issue" : "Connecting to CFTC"}
         </div>
-        <div style={{ color: "rgba(244,241,232,.45)", fontSize: 10, lineHeight: 1.55, marginTop: 8 }}>Official weekly CFTC reports · Tuesday positions, usually posted Friday.</div>
+        <div style={{ color: "rgba(244,241,232,.45)", fontSize: 10, lineHeight: 1.55, marginTop: 8 }}>Official weekly CFTC reports · positions as of Tuesday, usually posted Friday.</div>
       </div>
     </aside>
 
@@ -310,7 +310,7 @@ function Dashboard() {
           <span>{liveFailure
               ? `${historyQuery.isError ? "Weekly history request" : "Market list request"} failed${historyQuery.error instanceof Error ? `: ${historyQuery.error.message}` : marketsQuery.error instanceof Error ? `: ${marketsQuery.error.message}` : "."} ${liveActive ? "Existing returned CFTC history remains displayed with its original report date." : "Any displayed rows remain clearly labelled illustrative fallback, not current CFTC data."}`
               : liveActive
-                ? `${reportName} · ${effectiveMarket?.name ?? historyQuery.data?.marketName} · Tuesday report date ${formatDate(historyQuery.data!.reportAsOf)}. ${isReportStale ? "No newer release has been returned; the latest report is over ten days old. CFTC publication may be delayed." : "This is the Tuesday as-of date, not the Friday publication date."}`
+                ? `${reportName} · ${effectiveMarket?.name ?? historyQuery.data?.marketName} · report as of ${formatDate(historyQuery.data!.reportAsOf)}. ${isReportStale ? "No newer release has been returned; the latest report is over ten days old. CFTC publication may be delayed." : "This is the as-of date (positions on that day), not the Friday publication date."}`
                 : "Loading the latest official feed. Any demo rows shown are synthetic and are not relabelled as current CFTC observations."}
           </span>
           <small><Clock3 size={12} /> {checkTime ? `Last checked ${new Date(checkTime).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" })} ET` : "Last check pending"}{historyQuery.data?.reportAsOf ? ` · report as of ${formatDate(historyQuery.data.reportAsOf)}` : marketsQuery.data?.reportAsOf ? ` · market list as of ${formatDate(marketsQuery.data.reportAsOf)}` : ""}</small>
@@ -326,7 +326,7 @@ function Dashboard() {
         <div className="source-summary">
           <span className="eyebrow">Selected source</span>
           <b>{`${reportName} / ${effectiveMarket?.name ?? "Market pending"}`}</b>
-          <small>{`Tuesday observations · ${historyQuery.data?.rows.length ?? "—"} rows`}</small>
+          <small>{`Weekly observations · ${historyQuery.data?.rows.length ?? "—"} rows`}</small>
         </div>
       </div>
       <SettingsBar display id="configuration" />
@@ -450,7 +450,7 @@ function Dashboard() {
       <section id="signals" className="section">
         <div style={{ marginBottom: 13, display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12 }}><div><div className="eyebrow">Indicator semantics</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Signals &amp; weekly ledger</h2></div><Link href="/how-it-works#settings" className="subtle print-hidden" style={{ fontSize: 12 }}>How the signal modes work</Link></div>
         <div className="card">
-          <div className="card-head"><div><h3 className="panel-title">Weekly calculations</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · one record per Tuesday report date; latest row drives readout</div></div>
+          <div className="card-head"><div><h3 className="panel-title">Weekly calculations</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · one record per week report date; latest row drives readout</div></div>
             <div className="toolbar print-hidden">{exportButton("weekly-ledger")}<button className="btn" onClick={() => setTablePage(p => Math.max(0, p - 1))} disabled={tablePage === 0}>Previous</button><button className="btn" onClick={() => setTablePage(p => Math.min(Math.ceil(computed.length / 10) - 1, p + 1))} disabled={(tablePage + 1) * 10 >= computed.length}>Next</button></div>
           </div>
           <div className="card-body" style={{ paddingTop: 12 }}>
