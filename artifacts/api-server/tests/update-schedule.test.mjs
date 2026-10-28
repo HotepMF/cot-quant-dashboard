@@ -29,3 +29,7 @@ test("next-day checks track daylight saving transitions", () => {
   assert.equal(next("2026-03-07T17:00:00Z", ["2026-03-03", "2026-03-03"]), "2026-03-08T10:00:00.000Z");
   assert.equal(next("2026-10-31T17:00:00Z", ["2026-10-27", "2026-10-27"]), "2026-11-01T11:00:00.000Z");
 });
+test("twice-weekly schedule: also checks after the Wednesday 3:30pm release", () => {
+  assert.equal(next("2026-10-28T12:00:00Z", ["2026-10-20", "2026-10-20"]), "2026-10-28T19:30:00.000Z");
+  assert.equal(next("2026-12-09T13:00:00Z", ["2026-12-02", "2026-12-02"]), "2026-12-09T20:30:00.000Z", "standard time");
+});

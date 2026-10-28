@@ -7,6 +7,7 @@
  * how it gets confirmed or not.
  */
 import { DEMO_MARKETS } from "./demo";
+import { releaseFriday } from "./release";
 
 export const COT8_RECORD = {
   all: { cases: 204, wentItsWay: 59, move: 0.2 },
@@ -100,7 +101,7 @@ export function updateCaseLog(prev: CaseLog | null, inputs: CaseInput[], complet
   const byId = new Map(log.cases.map(c => [c.id, c]));
   for (const x of inputs) {
     if (x.dir !== 0 && x.reportDate >= log.startedReport && !byId.has(`${x.code}:${x.reportDate}`)) {
-      const fri = addDays(x.reportDate, 3);
+      const fri = releaseFriday(x.reportDate);
       const i = closeFor(x.bars, fri, completeThrough);
       if (i >= 0 && x.bars.dates[i] >= addDays(fri, -4)) {
         const uo = ultimateOscillator(x.bars, i), wr = williamsR(x.bars, i);

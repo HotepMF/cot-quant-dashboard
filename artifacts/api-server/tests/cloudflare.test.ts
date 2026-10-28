@@ -212,3 +212,20 @@ test("Actual D1 runtime: leases, resumable staging, atomic snapshots, API parity
     await runtime.dispose();
   }
 });
+
+test("Twice-weekly reports: the weekly series ignores Monday-dated mid-week reports", async t => {
+  const { releaseFriday, isMidweekReport } = await import("@workspace/cot-engine");
+  assert.equal(releaseFriday("2026-10-20"), "2026-10-23", "Tuesday report, published Friday");
+  assert.equal(releaseFriday("2026-12-02"), "2026-12-04", "Wednesday report, published Friday");
+  assert.equal(isMidweekReport("2026-12-07"), true);
+  assert.equal(isMidweekReport("2026-12-02"), false);
+  let call = 0;
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify(++call === 1
+    ? [{ report_date_as_yyyy_mm_dd: "2026-12-07T00:00:00.000" }, { report_date_as_yyyy_mm_dd: "2026-12-02T00:00:00.000" }]
+    : [{ market_and_exchange_names: "ONE", cftc_contract_market_code: "1" }])));
+  assert.equal((await officialMarkets("futures")).reportAsOf, "2026-12-02", "the newest weekly report, not Monday's");
+  const row = (date: string) => ({ cftc_contract_market_code: "1", report_date_as_yyyy_mm_dd: `${date}T00:00:00.000`, large_traders: "1", commercial_hedgers: "-1", small_traders: "0", open_interest: "10" });
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify([row("2026-11-24"), row("2026-11-30"), row("2026-12-02")])));
+  const h = await officialHistories("futures", "2026-12-02", [{ name: "ONE", code: "1" }]);
+  assert.deepEqual(h.get("ONE")!.rows.map(r => r.date), ["2026-11-24", "2026-12-02"], "one row per week: Tuesday history, then Wednesday");
+});

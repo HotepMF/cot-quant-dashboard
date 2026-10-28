@@ -151,7 +151,7 @@ export function HowItWorksPage() {
         <Section id="updates" title="Data & updates">
           <ul>
             <li><b>Nothing here is real-time.</b> The site shows end-of-day and weekly data, built for understanding the backdrop, not for timing trades.</li>
-            <li><b>COT positioning</b>: weekly. Positions as of Tuesday are published Friday at 3:30 p.m. ET, and the site checks for the release automatically.</li>
+            <li><b>COT positioning</b>: weekly. Positions as of Tuesday are published Friday at 3:30 p.m. ET, and the site checks for the release automatically. The CFTC plans to publish twice a week from late 2026 (positions as of Monday on Wednesday, as of Wednesday on Friday). The site will keep one row per week, the Friday release, so every lookback still counts weeks; the Monday report will be shown separately as a mid-week update once the CFTC confirms the format.</li>
             <li><b>Sector and futures prices</b>: end of day, updated on weekday evenings after the U.S. close. During the trading day the page shows the previous close. The page header shows both dates, for example "Prices Oct 21 close · CFTC Oct 13".</li>
             <li><b>If prices stop updating</b>, the page shows a warning with the last update date instead of quietly showing old numbers.</li>
             <li><b>The Invisible Hand</b>: positioning minutes after each Friday CFTC release; prices, volatility and yields after each weekday close. The demo account advances once a week, after the Friday close.</li>

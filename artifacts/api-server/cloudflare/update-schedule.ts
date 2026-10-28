@@ -39,12 +39,16 @@ export function nextCftcCheck(now: number, reports: (string | null)[], failed = 
   let fridayCalendar = calendar + ((5 - weekday + 7) % 7) * 86_400_000;
   let friday = zonedTime(fridayCalendar, 15, 30);
   if (friday <= now) friday = zonedTime(fridayCalendar + 7 * 86_400_000, 15, 30);
+  // Twice-weekly schedule: a check after the Wednesday 3:30 p.m. release too (one run; the 6 a.m. check backs it up).
+  const wednesdayCalendar = calendar + ((3 - weekday + 7) % 7) * 86_400_000;
+  let wednesday = zonedTime(wednesdayCalendar, 15, 30);
+  if (wednesday <= now) wednesday = zonedTime(wednesdayCalendar + 7 * 86_400_000, 15, 30);
   const expected = expectedReportDate(now);
   const waiting = failed || reports.length !== 2 || reports.some(date => !date || date < expected);
-  if (!waiting) return new Date(Math.min(daily, friday));
+  if (!waiting) return new Date(Math.min(daily, friday, wednesday));
   const p = localParts(now);
   const releaseWindow = weekday === 5 && p.hour * 60 + p.minute >= 15 * 60 + 30 && p.hour < 20;
   const interval = releaseWindow ? 10 * 60_000 : 60 * 60_000;
   const retry = (Math.floor(now / interval) + 1) * interval;
-  return new Date(Math.min(daily, friday, retry));
+  return new Date(Math.min(daily, friday, wednesday, retry));
 }
