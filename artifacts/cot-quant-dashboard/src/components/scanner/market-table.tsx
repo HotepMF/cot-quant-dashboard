@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { ArrowDown, ArrowUp, ArrowUpRight } from "lucide-react";
 import { prepareDetailMarket, useSharedSettings } from "@/lib/settings-store";
+import { OscChip } from "@/components/oscillators";
 import type { LiveReport } from "@/lib/settings-store";
 import type { ScanRow } from "@/hooks/use-screener";
 import { nfmt, nsigned, sectorLabel, shortDate, unavailableReason } from "@/hooks/use-screener";
@@ -106,7 +107,7 @@ export function MarketTable({ rows, report, lookback, showSector, rank, sortKey,
               {reason && <span className="scan-reason">{reason}</span>}
             </td>
             {showSector && <td className="subtle">{sectorLabel(r.sector)}</td>}
-            <td><SignalBadge row={r} />{r.largeMove && r.status === "ready" && <span style={{ marginLeft: 5 }}><MoveBadge change={r.weeklyChange} /></span>}{r.oiAlert && <span className="badge warn" style={{ marginLeft: 5 }} title="Absolute open-interest change met the configured threshold">OI alert</span>}</td>
+            <td><SignalBadge row={r} />{r.largeMove && r.status === "ready" && <span style={{ marginLeft: 5 }}><MoveBadge change={r.weeklyChange} /></span>}{r.oiAlert && <span className="badge warn" style={{ marginLeft: 5 }} title="Absolute open-interest change met the configured threshold">OI alert</span>}{r.flagged && <OscChip code={r.code} />}</td>
             <td><ScoreMeter value={r.active ? r.setupScore : null} tone={tone} /></td>
             <td className="mono">{r.zScore == null ? "—" : `${nsigned(r.zScore, 2)}σ`}</td>
             <td className="mono">{r.cycle == null ? "—" : `${nfmt(r.cycle, 0)}%`}</td>

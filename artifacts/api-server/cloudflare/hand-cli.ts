@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
-import { CORE_MARKETS, DEMO_MARKETS, DEMO_STATE_VERSION, HAND_PARTICIPATION, HAND_RANGE_TICKERS, HAND_TICKERS, advanceDemo, emptyDemo, type DemoPayload, type DemoState, type WeekBar } from "@workspace/cot-engine";
-import { buildHand, completedWeeks, filterByWeek } from "./hand-compute";
+import { CASE_MARKETS, CORE_MARKETS, DEMO_MARKETS, DEMO_STATE_VERSION, HAND_PARTICIPATION, HAND_RANGE_TICKERS, HAND_TICKERS, advanceDemo, emptyDemo, type CaseLog, type DemoPayload, type DemoState, type WeekBar } from "@workspace/cot-engine";
+import { buildHand, caseInputs, completeThrough, completedWeeks, filterByWeek, oscillatorSnapshot } from "./hand-compute";
+import { updateCaseLog } from "@workspace/cot-engine";
 import { cftcParticipation, siteHistories, treasuryCurve, yahooBars, type DailyBars } from "./hand-sources";
 import { statement } from "./database";
 import { RestD1 } from "./rest-d1";
@@ -10,6 +11,10 @@ import { priceSource, type DailyCloses } from "./sectors-sources";
 
 export const HAND_JOB = "invisible-hand";
 export const DEMO_JOB = "demo-account";
+export const CASE_LOG_JOB = "case-log";
+export const OSC_JOB = "oscillators";
+/** The live record starts with the first report under the 8-week default. */
+export const CASE_LOG_START = "2026-10-20";
 
 /**
  * The Invisible Hand numbers. Runs right after each CFTC collection (positioning) and after each evening
@@ -38,12 +43,22 @@ async function main() {
   const snapshot = buildHand({ generatedAt: new Date().toISOString(), priceSource: source.name, prices, curve, participation, rangeBars, siteHistories: histories });
   // Demo account inputs: completed weekly bars and the default filter per week, for every demo market.
   const demoBars: Record<string, WeekBar[]> = {}, filters: Record<string, Record<string, 1 | -1 | 0>> = {};
+  const daily = new Map<string, DailyBars>();
+  for (const m of CASE_MARKETS) {
+    try { daily.set(m.code, await yahooBars(m.ticker, "2y")); } catch { console.warn(`Price unavailable: ${m.ticker}`); }
+  }
   for (const m of DEMO_MARKETS) {
-    try { demoBars[m.code] = completedWeeks(await yahooBars(m.ticker, "2y")); } catch { console.warn(`Price unavailable: ${m.ticker}`); }
+    const d = daily.get(m.code);
+    if (d) demoBars[m.code] = completedWeeks(d);
     const h = histories?.get(m.code);
     if (h) filters[m.code] = filterByWeek(h);
   }
+  // The 8-week reading's live record and today's oscillators (shown next to the reading on the site).
+  const through = completeThrough();
+  const inputs = histories ? caseInputs(histories, daily) : [];
+  const osc = oscillatorSnapshot(inputs, through);
   if (process.argv.includes("--dry-run")) {
+    console.info(JSON.stringify({ oscillators: osc, caseLog: updateCaseLog(null, inputs, through, CASE_LOG_START) }, null, 2));
     console.info(JSON.stringify(snapshot, null, 2));
     const demo = advanceDemo(emptyDemo(), demoBars, filters);
     console.info(JSON.stringify({ demo: { ...demo, markets: Object.fromEntries(Object.entries(demo.markets).filter(([, s]) => s.order || s.position)) } }, null, 2));
@@ -72,6 +87,17 @@ async function main() {
       console.info(`Demo account advanced to week ending ${next.lastWeek}: ${next.trades.length} closed trades.`);
     }
   } catch { console.warn("Demo account update failed; it will catch up on the next run."); }
+  // Oscillators and the case log: context only; a failure here never affects the numbers above.
+  try {
+    if (inputs.length) {
+      await saveSnapshot(db, OSC_JOB, osc.asOf, JSON.stringify(osc), OSC_JOB);
+      const saved = await statement(db, "SELECT payload FROM cot_cf_documents WHERE key=?", CASE_LOG_JOB).first<{ payload: string }>();
+      const prev: CaseLog | null = saved ? JSON.parse(saved.payload) : null;
+      const next = updateCaseLog(prev, inputs, through, CASE_LOG_START);
+      await saveSnapshot(db, CASE_LOG_JOB, through, JSON.stringify(next), CASE_LOG_JOB);
+      console.info(`Case log: ${next.cases.length} cases, ${next.cases.filter(c => c.outcome).length} with outcomes.`);
+    }
+  } catch { console.warn("Oscillator / case-log update failed; it will catch up on the next run."); }
 }
 
 if (process.argv[1]?.endsWith("hand-cli.ts")) {

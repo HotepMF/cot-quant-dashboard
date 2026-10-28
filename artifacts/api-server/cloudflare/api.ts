@@ -14,6 +14,8 @@ const DOCUMENTS: Record<string, { key: string; name: string }> = {
   "/api/invisible-hand": { key: "invisible-hand", name: "Invisible Hand snapshot" },
   "/api/demo-account": { key: "demo-account", name: "demo account" },
   "/api/curves": { key: "curves", name: "futures curve snapshot" },
+  "/api/oscillators": { key: "oscillators", name: "oscillator snapshot" },
+  "/api/case-log": { key: "case-log", name: "8-week reading record" },
 };
 const unavailable = () => json({ message: "No complete prepared CFTC data is available yet. Configure GitHub automation and run the initial update." }, 503);
 

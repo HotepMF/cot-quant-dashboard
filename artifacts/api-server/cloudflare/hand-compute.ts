@@ -1,6 +1,6 @@
 import {
-  CORE_MARKETS, DEMO_FILTER_SETTINGS, HAND_PARTICIPATION, HAND_POWER_PRODUCERS, HAND_RANGES, computeRows,
-  type RawRow, type WeekBar,
+  CASE_MARKETS, CORE_MARKETS, DEMO_FILTER_SETTINGS, HAND_PARTICIPATION, HAND_POWER_PRODUCERS, HAND_RANGES, computeRows, defaultSignalSettings, ultimateOscillator, uoPullback, williamsR, wrPullback,
+  type CaseInput, type OscillatorSnapshot, type RawRow, type WeekBar,
   type CrowdedRow, type HandCard, type HandSnapshot, type ParticipationRow, type RangeRow,
 } from "@workspace/cot-engine";
 import type { CategoryHistory, CurvePoint, DailyBars, LatestCounts, SiteHistory } from "./hand-sources";
@@ -283,6 +283,45 @@ export function completedWeeks(b: DailyBars, now = new Date()): WeekBar[] {
     else out.push({ week, open: b.open[i], high: b.high[i], low: b.low[i], close: b.close[i] });
   });
   return out.filter(w => w.week < today || (w.week === today && late));
+}
+
+/** Last date whose daily close is final in New York (today after 17:30, otherwise the previous day). */
+export function completeThrough(now = new Date()): string {
+  const ny = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(now).map(p => [p.type, p.value]));
+  const today = `${ny.year}-${ny.month}-${ny.day}`;
+  return Number(ny.hour) * 60 + Number(ny.minute) >= 17 * 60 + 30 ? today : new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+}
+
+/** Per case market: the site default's latest reading (the 8-week reading) and its daily bars. */
+export function caseInputs(histories: Map<string, SiteHistory>, daily: Map<string, DailyBars>): CaseInput[] {
+  const out: CaseInput[] = [];
+  for (const m of CASE_MARKETS) {
+    const h = histories.get(m.code), bars = daily.get(m.code);
+    if (!h?.length || !bars) continue;
+    const rows: RawRow[] = h.map(r => ({ date: r.date, large_traders: r.largeTraders, small_traders: r.smallTraders ?? 0, commercial_hedgers: r.commercialHedgers, ...(r.openInterest ? { open_interest: r.openInterest } : {}) }));
+    const last = computeRows(rows, defaultSignalSettings).at(-1);
+    if (!last) continue;
+    out.push({ code: m.code, symbol: m.symbol, reportDate: last.date, dir: last.buy && !last.sell ? 1 : last.sell && !last.buy ? -1 : 0,
+      z: last.chZ, commercialCycle: last.chCycle, largeCycle: last.ltCycle, bars });
+  }
+  return out;
+}
+
+/** Today's Ultimate Oscillator and %R per market (last final close), with their side relative to the reading. */
+export function oscillatorSnapshot(inputs: CaseInput[], through: string): OscillatorSnapshot {
+  const markets: OscillatorSnapshot["markets"] = {};
+  let asOf = "";
+  for (const x of inputs) {
+    let i = -1;
+    for (let k = 0; k < x.bars.dates.length && x.bars.dates[k] <= through; k++) i = k;
+    if (i < 0) continue;
+    const uo = ultimateOscillator(x.bars, i), wr = williamsR(x.bars, i);
+    markets[x.code] = { symbol: x.symbol, date: x.bars.dates[i], uo: uo == null ? null : Number(uo.toFixed(1)), wr: wr == null ? null : Number(wr.toFixed(1)),
+      dir: x.dir, reportDate: x.reportDate, uoPullback: uoPullback(x.dir, uo), wrPullback: wrPullback(x.dir, wr) };
+    if (x.bars.dates[i] > asOf) asOf = x.bars.dates[i];
+  }
+  return { generatedAt: new Date().toISOString(), asOf, markets };
 }
 
 /** The demo account's frozen filter per report week (keyed by that week's Friday) from the site's own Legacy histories. */
