@@ -49,17 +49,17 @@ export function SectorSignalsPage() {
       })}
     </div>}
     <div className="scan-bar print-hidden">
-      <div className="eyebrow">Per-sector tables · directional setups first, then activity alerts</div>
-      <label className="switch-row compact"><span>Active signals only</span><input className="switch" type="checkbox" checked={activeOnly} onChange={e => setActiveOnly(e.target.checked)} data-testid="toggle-active-only" /></label>
+      <div className="eyebrow">Per-sector tables · extreme readings first, then large changes</div>
+      <label className="switch-row compact"><span>Extreme readings only</span><input className="switch" type="checkbox" checked={activeOnly} onChange={e => setActiveOnly(e.target.checked)} data-testid="toggle-active-only" /></label>
     </div>
     {!s.data && s.query.isLoading && <div className="card card-body"><TableSkeleton /></div>}
     {groups.map(g => {
       const shown = activeOnly ? g.active : g.ordered;
       return <section key={g.id} id={`sector-${g.id}`} className="card sector-section" data-testid={`section-sector-${g.id}`}>
-        <div className="card-head"><div><h2 className="panel-title">{g.label}</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{g.all.length} markets · {g.bull} bullish · {g.bear} bearish · {g.ready} evaluated</div></div></div>
+        <div className="card-head"><div><h2 className="panel-title">{g.label}</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{g.all.length} markets · {g.bull} extreme long · {g.bear} extreme short · {g.ready} evaluated</div></div></div>
         <div className="card-body" style={{ paddingTop: 10 }}>
           {shown.length ? <MarketTable rows={shown} report={s.report} lookback={s.lookback} testId={`table-sector-${g.id}`} /> :
-            <div className="scan-empty">{g.pending ? `Scan still running: ${g.pending} market(s) in this sector are queued. Signals may still appear.` : "No active signals in this sector under the current rule set."}</div>}
+            <div className="scan-empty">{g.pending ? `Scan still running: ${g.pending} market(s) in this sector are queued. Readings may still appear.` : "No extreme readings in this sector under the current settings."}</div>}
         </div>
       </section>;
     })}

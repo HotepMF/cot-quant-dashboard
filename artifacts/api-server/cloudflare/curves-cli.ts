@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
 import { CURVE_DEPTH, CURVE_MARKETS, curveCandidates, curveCarry, curveSpread, realisedVol, type CurveContract, type CurvePairHistory, type CurveRow, type CurveSnapshot } from "@workspace/cot-engine";
 import { completeThrough } from "./hand-compute";
-import { yahooBars, type DailyBars } from "./hand-sources";
+import { upTo, yahooBars } from "./hand-sources";
 import { RestD1 } from "./rest-d1";
 import { saveSnapshot } from "./sectors-cli";
 
@@ -30,12 +30,6 @@ async function yahooCloses(ticker: string, through: string): Promise<Map<string,
   });
   return out;
 }
-
-/** Daily bars cut at `through` (drops the next session's partial bar). */
-const upTo = (b: DailyBars, through: string): DailyBars => {
-  const n = b.dates.filter(d => d <= through).length;
-  return { dates: b.dates.slice(0, n), open: b.open.slice(0, n), high: b.high.slice(0, n), low: b.low.slice(0, n), close: b.close.slice(0, n) };
-};
 
 /**
  * Annualised 5-year vol of a continuous series with roll jumps removed: daily moves beyond 8x the median absolute

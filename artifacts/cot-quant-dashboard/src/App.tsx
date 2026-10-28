@@ -265,7 +265,7 @@ function Dashboard() {
   const signalTone = latest?.buy ? "good" : latest?.sell ? "bad" : "neutral";
   const selectedPosition = latest ? asModel(latest, modelKey) ?? 0 : 0;
   const showSignalMark = Boolean(latest && ((settings.showSignals && (latest.buy || latest.sell)) || latest.largeMove));
-  const signalMarkText = latest?.buy ? "BUY" : latest?.sell ? "SELL" : latest?.largeMove ? (latest.moveDirection === "Net positioning increased" ? "POSITION +" : "POSITION −") : "";
+  const signalMarkText = latest?.buy ? "EXT LONG" : latest?.sell ? "EXT SHORT" : latest?.largeMove ? (latest.moveDirection === "Net positioning increased" ? "POSITION +" : "POSITION −") : "";
   const signalMarkColor = latest?.buy ? C.large : latest?.sell ? C.red : C.small;
   const liveActive = Boolean(historyQuery.data?.rows.length);
   const liveFailure = marketsQuery.isError || historyQuery.isError;
@@ -374,16 +374,16 @@ function Dashboard() {
           <div className="card">
             <div className="card-head"><div><h2 className="panel-title">Current readout</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Derived from the selected latest row</div></div><Activity size={16} className="subtle" /></div>
             <div className="card-body">
-              <div className="eyebrow">Configured signal mode</div>
+              <div className="eyebrow">Configured reading mode</div>
               <div style={{ marginTop: 9 }}><span className={`badge ${signalTone}`} data-testid="status-signal"><span className="dot" style={{ background: latest?.buy ? "#2a8b79" : latest?.sell ? "#c95b4c" : "hsl(var(--muted-foreground))" }} />{signalLabel}</span></div>
               <div style={{ marginTop: 19, display: "grid", gap: 13 }}>
                 <div className="statline"><span className="subtle">Monitored participant</span><b>{settings.participant}</b></div>
                 <div className="statline"><span className="subtle">Position Z-score</span><b className="mono">{selectedZ == null ? "Insufficient lookback" : `${signed(selectedZ, 2)}σ`}</b></div>
-                <div className="statline"><span className="subtle">Confluence</span><b>{latest?.confluenceBull ? "Opposing extremes · bullish" : latest?.confluenceBear ? "Opposing extremes · bearish" : "Not aligned"}</b></div>
+                <div className="statline"><span className="subtle">Confluence</span><b>{latest?.confluenceBull ? "Opposing extremes · commercials long" : latest?.confluenceBear ? "Opposing extremes · commercials short" : "Not aligned"}</b></div>
                 <div className="statline"><span className="subtle">OI threshold</span><b className="mono">{latest?.oiMove != null && Math.abs(latest.oiMove) >= settings.oiThreshold ? `${signed(latest.oiMove, 1)}% alert` : "No threshold breach"}</b></div>
                 <OscReadout code={effectiveMarket?.code} />
               </div>
-              <div className="notice" style={{ marginTop: 19 }}>A signal state is a mechanical indicator output—not a recommendation. Position extremes and confluence are descriptive inputs only.</div>
+              <div className="notice" style={{ marginTop: 19 }}>A reading is a mechanical rule state, not a recommendation. Position extremes and confluence are descriptive inputs only.</div>
             </div>
           </div>
         </div>
@@ -448,7 +448,7 @@ function Dashboard() {
       </section>
 
       <section id="signals" className="section">
-        <div style={{ marginBottom: 13, display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12 }}><div><div className="eyebrow">Indicator semantics</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Signals &amp; weekly ledger</h2></div><Link href="/how-it-works#settings" className="subtle print-hidden" style={{ fontSize: 12 }}>How the signal modes work</Link></div>
+        <div style={{ marginBottom: 13, display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12 }}><div><div className="eyebrow">Indicator semantics</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Readings &amp; weekly ledger</h2></div><Link href="/how-it-works#settings" className="subtle print-hidden" style={{ fontSize: 12 }}>How the reading modes work</Link></div>
         <div className="card">
           <div className="card-head"><div><h3 className="panel-title">Weekly calculations</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · one record per week report date; latest row drives readout</div></div>
             <div className="toolbar print-hidden">{exportButton("weekly-ledger")}<button className="btn" onClick={() => setTablePage(p => Math.max(0, p - 1))} disabled={tablePage === 0}>Previous</button><button className="btn" onClick={() => setTablePage(p => Math.min(Math.ceil(computed.length / 10) - 1, p + 1))} disabled={(tablePage + 1) * 10 >= computed.length}>Next</button></div>
@@ -460,7 +460,7 @@ function Dashboard() {
                 <td className="mono">{formatDate(r.date)}</td><td className={`mono ${changeTone(r.large_traders)}`}>{signed(r.large_traders)}</td><td className={`mono ${changeTone(r.small_traders)}`}>{signed(r.small_traders)}</td><td className={`mono ${changeTone(r.commercial_hedgers)}`}>{signed(r.commercial_hedgers)}</td>
                 <td className={`mono weekly-change ${changeTone(r.chDelta)}`}>{signed(r.chDelta)}</td><td className="mono">{r.chZ == null ? "—" : `${signed(r.chZ, 2)}σ`}</td><td className="mono">{r.chDeltaPct == null ? "—" : `${fmt(r.chDeltaPct, 0)}th / ${signed(r.chDeltaZ, 2)}σ`}</td>
                 <td className="mono"><span className={cycleTone(r.ltCycle)}>{fmt(r.ltCycle, 0)}</span> / <span className={cycleTone(r.chCycle)}>{fmt(r.chCycle, 0)}%</span></td><td className={`mono weekly-change ${changeTone(r.oiMove)}`}>{r.oiMove == null ? "—" : `${signed(r.oiMove, 1)}%`}</td>
-                <td><span className={`badge ${r.buy ? "good" : r.sell ? "bad" : r.largeMove ? (moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.positive ? "good" : "bad") : "neutral"}`}>{!settings.showSignals && (r.buy || r.sell) ? "Signal labels hidden" : r.buy ? `Extreme long · ${signalPrefix}` : r.sell ? `Extreme short · ${signalPrefix}` : r.largeMove ? `Large change · ${moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.text.toLowerCase() ?? "no direction"}` : "No signal"}</span></td>
+                <td><span className={`badge ${r.buy ? "good" : r.sell ? "bad" : r.largeMove ? (moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.positive ? "good" : "bad") : "neutral"}`}>{!settings.showSignals && (r.buy || r.sell) ? "Labels hidden" : r.buy ? `Extreme long · ${signalPrefix}` : r.sell ? `Extreme short · ${signalPrefix}` : r.largeMove ? `Large change · ${moveRead(settings.participant, settings.participant === "Large Traders" ? r.ltDelta : settings.participant === "Small Traders" ? r.stDelta : r.chDelta)?.text.toLowerCase() ?? "no direction"}` : "No reading"}</span></td>
               </tr>)}</tbody>
             </table></div>}
             <div className="chart-foot">Position Z uses SMA and population standard deviation of the configured rolling window including the current week. Cycle rank uses the full available history.</div>

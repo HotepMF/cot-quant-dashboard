@@ -124,7 +124,7 @@ const tests: [string, string, string][] = [
   ["Are crowded markets followed by bigger or sharper moves?", "No larger than after strong trends with ordinary positioning", "NO"],
   ["Do rising sectors keep rising?", "No reliable tendency to continue or reverse at any lookback (11 sectors, 1999–2026)", "NO"],
   ["Do unusually strong sectors give it back?", "Leaders 2σ+ above normal trailed SPY the next week, median −0.3%", "TOO SMALL"],
-  ["Does XLE follow the COT filter on energy futures?", "Same direction vs SPY over 4–13 weeks after signals on crude, gasoline and natural gas; small samples, found by testing many links", "LEAD · SMALL SAMPLE"],
+  ["Does XLE follow the COT filter on energy futures?", "Same direction vs SPY over 4–13 weeks after commercial extremes on crude, gasoline and natural gas (previous 16-week default); small samples, found by testing many links", "LEAD · SMALL SAMPLE"],
 ];
 
 export function SectorsPage() {
