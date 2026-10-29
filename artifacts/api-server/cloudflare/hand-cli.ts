@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
-import { CASE_MARKETS, CORE_MARKETS, HAND_PARTICIPATION, HAND_RANGE_TICKERS, HAND_TICKERS, type CaseLog } from "@workspace/cot-engine";
+import { CASE_MARKETS, CORE_MARKETS, HAND_PARTICIPATION, HAND_RANGE_TICKERS, HAND_TICKERS, sectorOf, updateSectorBreakLog, type CaseLog, type IntradayBars, type SectorBreakLog } from "@workspace/cot-engine";
 import { buildHand, caseInputs, settledThrough, oscillatorSnapshot } from "./hand-compute";
 import { updateCaseLog } from "@workspace/cot-engine";
-import { cftcParticipation, siteHistories, treasuryCurve, upTo, yahooBars, type DailyBars } from "./hand-sources";
+import { cftcParticipation, siteHistories, treasuryCurve, upTo, yahooBars, yahooIntraday, type DailyBars } from "./hand-sources";
 import { statement } from "./database";
 import { RestD1 } from "./rest-d1";
 import { saveSnapshot } from "./sectors-cli";
@@ -15,6 +15,7 @@ export const CASE_LOG_JOB = "case-log";
 export const OSC_JOB = "oscillators";
 /** The live record starts with the first report under the 8-week default. */
 export const CASE_LOG_START = "2026-10-20";
+export const SECTOR_BREAK_JOB = "sector-breaks";
 
 /**
  * The Invisible Hand numbers. Runs right after each CFTC collection (positioning) and after each evening
@@ -50,8 +51,14 @@ async function main() {
   const through = settledThrough();
   const inputs = histories ? caseInputs(histories, daily) : [];
   const osc = oscillatorSnapshot(inputs, through);
+  // Sector breaks in the week after each reading: 15-minute closes for every market that has a sector.
+  const intraday = new Map<string, IntradayBars>();
+  for (const m of CASE_MARKETS.filter(m => sectorOf(m.symbol))) {
+    try { intraday.set(m.symbol, await yahooIntraday(m.ticker)); } catch { console.warn(`Intraday prices unavailable: ${m.ticker}`); }
+  }
+  const breakInputs = inputs.map(x => ({ code: x.code, symbol: x.symbol, reportDate: x.reportDate, dir: x.dir, dailyClose: x.bars.close.slice(0, x.bars.dates.filter(d => d <= through).length) }));
   if (process.argv.includes("--dry-run")) {
-    console.info(JSON.stringify({ oscillators: osc, caseLog: updateCaseLog(null, inputs, through, CASE_LOG_START) }, null, 2));
+    console.info(JSON.stringify({ oscillators: osc, caseLog: updateCaseLog(null, inputs, through, CASE_LOG_START), sectorBreaks: updateSectorBreakLog(null, breakInputs, intraday, CASE_LOG_START) }, null, 2));
     console.info(JSON.stringify(snapshot, null, 2));
     return;
   }
@@ -72,6 +79,15 @@ async function main() {
       console.info(`Case log: ${next.cases.length} cases, ${next.cases.filter(c => c.outcome).length} with outcomes.`);
     }
   } catch { console.warn("Oscillator / case-log update failed; it will catch up on the next run."); }
+  try {
+    if (inputs.length && intraday.size) {
+      const saved = await statement(db, "SELECT payload FROM cot_cf_documents WHERE key=?", SECTOR_BREAK_JOB).first<{ payload: string }>();
+      const prev: SectorBreakLog | null = saved ? JSON.parse(saved.payload) : null;
+      const next = updateSectorBreakLog(prev, breakInputs, intraday, CASE_LOG_START);
+      await saveSnapshot(db, SECTOR_BREAK_JOB, through, JSON.stringify(next), SECTOR_BREAK_JOB);
+      console.info(`Sector break log: ${next.cases.length} reading weeks, ${next.cases.filter(c => c.status === "broke").length} with a sector break.`);
+    }
+  } catch { console.warn("Sector break log update failed; it will catch up on the next run."); }
 }
 
 if (process.argv[1]?.endsWith("hand-cli.ts")) {
