@@ -6,21 +6,21 @@ import { CORE_GROUPS, CORE_MARKETS, SPECIALTY_MARKETS } from "@workspace/cot-eng
 import { useTheme } from "@/components/scanner/scanner-shell";
 import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
 
-/** The sub-pages, in the sidebar's order and with its names (Workspace, then All-market scan), then using it and the data. */
+/** The sub-pages, in the sidebar's order and with its names, then using it and the data. */
 const PAGES = [
   { slug: "start", label: "Start here" },
   { slug: "z-scores", label: "Z-scores explained" },
-  { slug: "market-overview", label: "Market overview", group: "Workspace" },
-  { slug: "positioning", label: "Positioning", group: "Workspace" },
-  { slug: "weekly-readings", label: "Weekly readings", group: "Workspace" },
-  { slug: "settings", label: "Settings", group: "Workspace" },
-  { slug: "sector-positioning", label: "Sector positioning", group: "All-market scan" },
-  { slug: "watchlist", label: "Watchlist", group: "All-market scan" },
-  { slug: "spdr", label: "SPDR sectors", group: "All-market scan" },
-  { slug: "invisible-hand", label: "The Invisible Hand", group: "All-market scan" },
+  { slug: "market-overview", label: "Market overview" },
+  { slug: "positioning", label: "Positioning" },
+  { slug: "weekly-readings", label: "Weekly readings" },
+  { slug: "settings", label: "Settings" },
+  { slug: "sector-positioning", label: "Sector positioning" },
+  { slug: "watchlist", label: "Watchlist" },
+  { slug: "spdr", label: "SPDR sectors" },
+  { slug: "invisible-hand", label: "The Invisible Hand" },
   { slug: "using-it", label: "Using it day to day" },
   { slug: "data", label: "Data & limits" },
-] as { slug: string; label: string; group?: string }[];
+] as { slug: string; label: string }[];
 type Slug = string;
 
 /** Earlier addresses (the single long page's anchors, then the first sub-pages) and where they live now. */
@@ -113,7 +113,6 @@ export function HowItWorksPage() {
 
       <nav className="hiw-toc print-hidden" aria-label="How it works pages">
         {PAGES.map((p, i) => <span key={p.slug} className="hiw-tab">
-          {p.group && p.group !== PAGES[i - 1]?.group && <span className="hiw-group">{p.group}</span>}
           <Link href={to(p.slug)} className="ms-chip" aria-pressed={p.slug === current.slug} aria-current={p.slug === current.slug ? "page" : undefined}
             data-testid={`hiw-tab-${p.slug}`}>{i + 1}. {p.label}</Link>
         </span>)}
