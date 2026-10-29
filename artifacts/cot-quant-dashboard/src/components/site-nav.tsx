@@ -17,6 +17,9 @@ export const researchLinks = [
   { href: "/how-it-works", label: "How it works", short: "Info", id: "how-it-works", icon: CircleHelp },
 ];
 
+/** The link is the current page, or a sub-page of it (How it works has /how-it-works/<page>). */
+const isHere = (location: string, href: string) => location === href || location.startsWith(`${href}/`);
+
 type SectionProps = { activeSection?: string; onSection?: (id: string) => void };
 
 export function SiteBrand() {
@@ -41,7 +44,7 @@ export function SiteNav({ activeSection, onSection }: SectionProps) {
     </nav>
     <div className="eyebrow" style={{ color: "rgba(244,241,232,.42)", padding: "22px 12px 8px" }}>All-market scan</div>
     <nav style={{ display: "grid", gap: 3 }}>
-      {researchLinks.map(({ href, label, id, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${location === href ? "active" : ""}`} data-testid={`nav-${id}`}><Icon size={16} />{label}</Link>)}
+      {researchLinks.map(({ href, label, id, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${isHere(location, href) ? "active" : ""}`} data-testid={`nav-${id}`}><Icon size={16} />{label}</Link>)}
     </nav>
   </>;
 }
@@ -52,6 +55,6 @@ export function SiteMobileNav({ activeSection, onSection }: SectionProps) {
     {workspaceSections.map(({ id, label, icon: Icon }) => onSection
       ? <button key={id} className={`nav-link ${activeSection === id ? "active" : ""}`} onClick={() => onSection(id)} aria-label={label} data-testid={`mobile-nav-${id}`}><Icon size={16} /><span>{label.split(" ")[0]}</span></button>
       : <Link key={id} href={`/#${id}`} className="nav-link" aria-label={label} data-testid={`mobile-nav-${id}`}><Icon size={16} /><span>{label.split(" ")[0]}</span></Link>)}
-    {researchLinks.map(({ href, short, label, id, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${location === href ? "active" : ""}`} aria-label={label} data-testid={`mobile-nav-${id}`}><Icon size={16} /><span>{short}</span></Link>)}
+    {researchLinks.map(({ href, short, label, id, icon: Icon }) => <Link key={href} href={href} className={`nav-link ${isHere(location, href) ? "active" : ""}`} aria-label={label} data-testid={`mobile-nav-${id}`}><Icon size={16} /><span>{short}</span></Link>)}
   </nav>;
 }
