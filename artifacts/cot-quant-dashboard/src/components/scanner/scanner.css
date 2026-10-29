@@ -119,6 +119,8 @@
 .sx-table.hiw-table td { font-size:12.5px;vertical-align:top;white-space:normal;overflow-wrap:anywhere; }
 .hiw-table td:first-child { color:hsl(var(--muted-foreground));width:42%; }
 .hiw-table td.num { text-align:left; }
+.hiw-quick { font-size:13px;line-height:1.55;margin:0; }
+.hiw-steps { margin:0;padding-left:20px;display:grid;gap:8px; }
 .hiw-pager { display:flex;justify-content:space-between;gap:10px;max-width:860px;margin:16px 0 4px; }
 .hiw-toc a[aria-pressed="true"] { pointer-events:none; }
 /* Settings bar (components/settings-bar.tsx). */
