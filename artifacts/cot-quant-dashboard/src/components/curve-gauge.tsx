@@ -128,7 +128,7 @@ export function CurvePanel({ code }: { code?: string }) {
           <div className="subtle cg-hist-head"><span>Spread, {monthName(row.history.near)} − {monthName(row.history.far)}, last {row.history.dates.length} days</span><span>{num(Math.min(...row.history.spread))} to {num(Math.max(...row.history.spread))}</span></div>
           <SpreadLine spread={row.history.spread} />
         </div>}
-        <div className="notice cg-note">{note(row, zone)} <Link href="/how-it-works/pages#curve">How we measure it</Link></div>
+        <div className="notice cg-note">{note(row, zone)} <Link href="/how-it-works/market-detail#curve">How we measure it</Link></div>
       </div>
     </div>
   </div>;
@@ -158,6 +158,6 @@ export function StretchedCurves() {
         </tr>;
       })}</tbody>
     </table></div>
-    <div className="chart-foot">Deep = beyond the 20th / 80th percentile of the market's own carry. In commodities, both ends have come with higher volatility (backwardation most). Not a trade filter: it did not improve the COT readings. <Link href="/how-it-works/pages#curve">Method</Link></div></div>
+    <div className="chart-foot">Deep = beyond the 20th / 80th percentile of the market's own carry. In commodities, both ends have come with higher volatility (backwardation most). Not a trade filter: it did not improve the COT readings. <Link href="/how-it-works/market-detail#curve">Method</Link></div></div>
   </section>;
 }

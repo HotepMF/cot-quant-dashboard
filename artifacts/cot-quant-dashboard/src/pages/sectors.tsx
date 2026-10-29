@@ -185,7 +185,7 @@ export function SectorsPage() {
           <section className="card sx-panel" aria-label="What our tests found">
             <div className="sx-head"><span>TEST LOG · CONTEXT, NOT SIGNALS</span><b>2007–2026</b></div>
             <table className="sx-table sx-tests"><tbody>{tests.map(([q, a, v]) => <tr key={q}><td className="sx-qn">{q}<span>{a}</span></td><td><span className="sx-vd">{v}</span></td></tr>)}</tbody></table>
-            <p className="sx-rd">Read "crowded" as where the risk sits and the price columns as what is actually moving. <Link href="/how-it-works/pages#sectors">How it works</Link></p>
+            <p className="sx-rd">Read "crowded" as where the risk sits and the price columns as what is actually moving. <Link href="/how-it-works/spdr">How it works</Link></p>
           </section>
         </div>
         <div className="sx-panels">{data.panels.map(p => <section key={p.id} className="card sx-panel" data-testid={`panel-${p.id}`}>

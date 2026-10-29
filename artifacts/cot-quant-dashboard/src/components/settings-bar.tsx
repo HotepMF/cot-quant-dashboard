@@ -57,7 +57,7 @@ export function SettingsBar({ display = false, id }: { display?: boolean; id?: s
         {toggles.map(([label, key]) => <label className="switch-row" key={key}><span>{label}</span><input className="switch" type="checkbox" checked={Boolean(settings[key])} onChange={e => set(key, e.target.checked as never)} data-testid={`toggle-${String(key)}`} /></label>)}
       </div>
       <div className="sb-foot">
-        <span>{isDefault ? <>Site default · <Link href="/how-it-works/eight-week">what the history shows</Link></> : "Custom settings"} · <Link href="/how-it-works/settings">What each setting does</Link></span>
+        <span>{isDefault ? <>Site default · <Link href="/how-it-works/watchlist#reading">what a reading means</Link></> : "Custom settings"} · <Link href="/how-it-works/settings">What each setting does</Link></span>
         {!isDefault && <button className="btn sb-btn" onClick={() => setSettings(s => ({ ...s, ...defaultSignalSettings }))} data-testid="button-reset-model">Reset to the site default</button>}
       </div>
     </div>}

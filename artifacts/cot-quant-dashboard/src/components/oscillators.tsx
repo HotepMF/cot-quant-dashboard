@@ -35,7 +35,7 @@ export function LiveRecord() {
   const pct = (a: number, b: number) => b ? `${Math.round(a / b * 100)}%` : "—";
   return <section className="card section" data-testid="live-record">
     <div className="card-head"><div><h2 className="panel-title">8-week reading: the record</h2>
-      <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>How the week after each reading went, in the commercials' direction · <Link href="/how-it-works/eight-week">method</Link></div></div></div>
+      <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>How the week after each reading went, in the commercials' direction · <Link href="/how-it-works/watchlist">how to read it</Link></div></div></div>
     <div className="card-body">
       <div className="sx-scroll"><table className="sx-table">
         <thead><tr><th /><th className="num">Cases</th><th className="num">Next week went their way</th><th className="num">Average move</th></tr></thead>
