@@ -2,7 +2,7 @@ import { statement, type Sql } from "./database";
 import type { Env } from "./types";
 
 export const SECTORS_JOB = "daily-sectors";
-const START = 17 * 60 + 30, END = 23 * 60 + 30, RETRY_MS = 90 * 60_000;
+const WINDOWS = [[6 * 60, 9 * 60], [17 * 60 + 30, 23 * 60 + 30]] as const, RETRY_MS = 90 * 60_000;
 
 /** Minutes since midnight and weekday in New York; DST handled by Intl. */
 function newYork(now: number) {
@@ -13,13 +13,15 @@ function newYork(now: number) {
 }
 
 /**
- * Weekdays after the close (17:30-23:30 New York): run once per day; retry every 90 minutes until a run succeeds.
- * Friday's run also picks up that afternoon's CFTC release.
+ * Two runs each weekday, each retried every 90 minutes until it succeeds:
+ *   pre-open (06:00-09:00 New York)  futures numbers from the previous day's settlements (oscillators, curves, case log);
+ *   evening (17:30-23:30 New York)   the SPDR page after the 16:00 close; Friday's run also picks up the CFTC release.
  */
 export function sectorsDue(now: number, lastDispatchAt: number | null, lastSuccessAt: number | null) {
   const { weekday, minutes } = newYork(now);
-  if (weekday === "Sat" || weekday === "Sun" || minutes < START || minutes >= END) return false;
-  const windowStart = now - (minutes - START) * 60_000 - (now % 60_000);
+  const win = WINDOWS.find(([a, b]) => minutes >= a && minutes < b);
+  if (weekday === "Sat" || weekday === "Sun" || !win) return false;
+  const windowStart = now - (minutes - win[0]) * 60_000 - (now % 60_000);
   if (lastSuccessAt != null && lastSuccessAt >= windowStart) return false;
   return lastDispatchAt == null || lastDispatchAt < windowStart || now - lastDispatchAt >= RETRY_MS;
 }

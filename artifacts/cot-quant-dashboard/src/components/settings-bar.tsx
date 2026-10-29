@@ -28,7 +28,7 @@ export function SettingsBar({ display = false, id }: { display?: boolean; id?: s
     <button className="scan-settings-head" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid="button-toggle-settings">
       <span className="eyebrow">Settings</span>
       <span className="scan-rule-chips">
-        <b>{settings.signalMode}</b><i>{settings.participant}</i><i>{settings.lookback}w</i><i>{settings.zMethod === "Open Interest Normalization" ? "OI-norm Z" : "std Z"}</i>
+        <b>{settings.signalMode}</b><i>{settings.participant}</i><i data-testid="chip-lookback">{settings.lookback}-week {settings.zMethod === "Open Interest Normalization" ? "OI-norm Z" : "Z"}</i>
         <i>Z {settings.zEnabled ? `≥ ${settings.zThreshold}σ` : "off"}</i><i>cycle {settings.confluenceThreshold}%</i>{settings.requireSmall && <i>small confirm</i>}
         <i className={isDefault ? "sb-default" : "sb-custom"}>{isDefault ? "site default" : "custom"}</i>
       </span>
@@ -38,6 +38,10 @@ export function SettingsBar({ display = false, id }: { display?: boolean; id?: s
       The default changed on Oct 27, 2026; you were using {describe(previous)}.{" "}
       <button className="btn sb-btn" onClick={() => { setSettings(s => ({ ...s, ...previous })); closePrevious(); }} data-testid="button-restore-model">Restore mine</button>{" "}
       <button className="btn sb-btn" onClick={closePrevious} data-testid="button-keep-default">Keep the new default</button>
+    </div>}
+    {!isDefault && !previous && <div className="sb-line sb-custom-line" data-testid="notice-custom">
+      You are using your own setting ({describe(settings)}), so these readings differ from what other visitors see. The site default is {describe(defaultSignalSettings)}.{" "}
+      <button className="btn sb-btn" onClick={() => setSettings(s => ({ ...s, ...defaultSignalSettings }))} data-testid="button-use-default">Use the site default</button>
     </div>}
     {open && <div className="scan-settings-body" data-testid="settings-body">
       <div className="field"><label htmlFor="s-part">Participant</label><select id="s-part" className="select" value={settings.participant} onChange={e => set("participant", e.target.value)} data-testid="select-participant"><option>Large Traders</option><option>Small Traders</option><option>Commercial Hedgers</option></select></div>

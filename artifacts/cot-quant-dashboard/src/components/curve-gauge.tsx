@@ -94,7 +94,7 @@ export function CurvePanel({ code }: { code?: string }) {
   // This market's own settlement date: markets close on different days (holidays, Sunday sessions), so the snapshot's date can be later.
   const asOf = row?.contracts[0]?.date ?? query.data?.asOf;
   const head = <div className="card-head"><div><h2 className="panel-title">Curve &amp; volatility</h2><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>Backwardation vs contango, and how big moves are now · end of day{asOf ? ` · ${asOf}` : ""}</div></div><span className="cg-label">Measured · not a signal</span></div>;
-  if (!row) return <div className="card section cg-card" data-testid="curve-panel">{head}<div className="card-body subtle" style={{ fontSize: 12 }}>{query.isLoading ? "Loading the curve…" : "No curve saved for this market yet. The archive updates each weekday evening."}</div></div>;
+  if (!row) return <div className="card section cg-card" data-testid="curve-panel">{head}<div className="card-body subtle" style={{ fontSize: 12 }}>{query.isLoading ? "Loading the curve…" : "No curve saved for this market yet. The archive updates each weekday before the open, from the previous day's settlements."}</div></div>;
   const zone = curveZone(symbol, row.carry), [near, far] = row.contracts, pv = POINT_VALUE.get(symbol);
   const vs = volState(row.vol?.ratio);
   // A typical day now: one daily standard deviation, in percent and in dollars per contract at the front price.

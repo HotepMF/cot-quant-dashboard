@@ -10,6 +10,7 @@ import { handleApi } from "../cloudflare/api";
 import { RestD1 } from "../cloudflare/rest-d1";
 import { yahooPrices, type DailyCloses, type PositioningHistory } from "../cloudflare/sectors-sources";
 import { upTo } from "../cloudflare/hand-sources";
+import { settledThrough } from "../cloudflare/hand-compute";
 import type { Env } from "../cloudflare/types";
 
 /** Weekday closes from 2020-01-01, value(i) per trading day. */
@@ -54,6 +55,21 @@ test("The job runs once per weekday evening in New York, retrying every 90 minut
   assert.equal(sectorsDue(wed1800 + 100 * 60_000, wed1800, null), true, "retry after 90 minutes without success");
   assert.equal(sectorsDue(wed1800 + 100 * 60_000, wed1800, wed1800 + 10 * 60_000), false, "already succeeded today");
   assert.equal(sectorsDue(wed1800, Date.UTC(2026, 9, 20, 22, 0), Date.UTC(2026, 9, 20, 22, 5)), true, "yesterday's success does not count");
+});
+
+test("A second, pre-open run picks up the previous day's settlements", () => {
+  const thu0630 = Date.UTC(2026, 9, 22, 10, 30); // 06:30 EDT
+  assert.equal(sectorsDue(thu0630, null, null), true);
+  assert.equal(sectorsDue(thu0630, null, Date.UTC(2026, 9, 21, 22, 5)), true, "last evening's success does not cover the morning");
+  assert.equal(sectorsDue(thu0630 + 30 * 60_000, thu0630, thu0630 + 10 * 60_000), false, "already succeeded this morning");
+  assert.equal(sectorsDue(Date.UTC(2026, 9, 22, 14, 0), null, null), false, "10:00 is between the two windows");
+  assert.equal(sectorsDue(Date.UTC(2026, 9, 22, 22, 0), null, thu0630 + 10 * 60_000), true, "the morning's success does not cover the evening");
+});
+
+test("Futures closes count only once settled: through the previous New York day", () => {
+  assert.equal(settledThrough(new Date("2026-10-28T21:31:00Z")), "2026-10-27", "17:31 New York: today's bar is still the last trade");
+  assert.equal(settledThrough(new Date("2026-10-29T10:30:00Z")), "2026-10-28", "06:30 next morning: yesterday has settled");
+  assert.equal(settledThrough(new Date("2026-11-02T11:00:00Z")), "2026-11-01", "Monday morning: bars through Sunday, so Friday's settlement");
 });
 
 function synthetic() {
