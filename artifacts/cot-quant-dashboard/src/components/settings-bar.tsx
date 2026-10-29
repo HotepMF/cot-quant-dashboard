@@ -28,7 +28,7 @@ export function SettingsBar({ display = false, id }: { display?: boolean; id?: s
     <button className="scan-settings-head" onClick={() => setOpen(o => !o)} aria-expanded={open} data-testid="button-toggle-settings">
       <span className="eyebrow">Settings</span>
       <span className="scan-rule-chips">
-        <b>{settings.signalMode}</b><i>{settings.participant}</i><i>{settings.lookback}w</i><i>{settings.zMethod === "Open Interest Normalization" ? "OI-norm Z" : "std Z"}</i>
+        <b>{settings.signalMode}</b><i>{settings.participant}</i><i data-testid="chip-lookback">{settings.lookback}-week {settings.zMethod === "Open Interest Normalization" ? "OI-norm Z" : "Z"}</i>
         <i>Z {settings.zEnabled ? `≥ ${settings.zThreshold}σ` : "off"}</i><i>cycle {settings.confluenceThreshold}%</i>{settings.requireSmall && <i>small confirm</i>}
         <i className={isDefault ? "sb-default" : "sb-custom"}>{isDefault ? "site default" : "custom"}</i>
       </span>
@@ -39,9 +39,13 @@ export function SettingsBar({ display = false, id }: { display?: boolean; id?: s
       <button className="btn sb-btn" onClick={() => { setSettings(s => ({ ...s, ...previous })); closePrevious(); }} data-testid="button-restore-model">Restore mine</button>{" "}
       <button className="btn sb-btn" onClick={closePrevious} data-testid="button-keep-default">Keep the new default</button>
     </div>}
+    {!isDefault && !previous && <div className="sb-line sb-custom-line" data-testid="notice-custom">
+      You are using your own setting ({describe(settings)}), so these readings differ from what other visitors see. The site default is {describe(defaultSignalSettings)}.{" "}
+      <button className="btn sb-btn" onClick={() => setSettings(s => ({ ...s, ...defaultSignalSettings }))} data-testid="button-use-default">Use the site default</button>
+    </div>}
     {open && <div className="scan-settings-body" data-testid="settings-body">
       <div className="field"><label htmlFor="s-part">Participant</label><select id="s-part" className="select" value={settings.participant} onChange={e => set("participant", e.target.value)} data-testid="select-participant"><option>Large Traders</option><option>Small Traders</option><option>Commercial Hedgers</option></select></div>
-      <div className="field"><label htmlFor="s-mode">Signal mode</label><select id="s-mode" className="select" value={settings.signalMode} onChange={e => set("signalMode", e.target.value)} data-testid="select-signal-mode"><option>Z-Score Only</option><option>COT Confluence</option><option>Both (AND gate)</option></select></div>
+      <div className="field"><label htmlFor="s-mode">Reading mode</label><select id="s-mode" className="select" value={settings.signalMode} onChange={e => set("signalMode", e.target.value)} data-testid="select-signal-mode"><option>Z-Score Only</option><option>COT Confluence</option><option>Both (AND gate)</option></select></div>
       <div className="field"><label htmlFor="s-zm">Z calculation</label><select id="s-zm" className="select" value={settings.zMethod} onChange={e => set("zMethod", e.target.value)} data-testid="select-z-method"><option>Standard Z-Score</option><option>Open Interest Normalization</option></select></div>
       <div className="field"><label htmlFor="s-lb">Lookback · weeks</label><input id="s-lb" className="input mono" type="number" min="3" max="500" value={settings.lookback} onChange={e => set("lookback", Math.max(3, Math.min(500, Number(e.target.value) || 3)))} data-testid="input-lookback" /></div>
       <div className="field"><label htmlFor="s-z">Z threshold · σ</label><input id="s-z" className="input mono" type="number" min="0" max="20" step=".05" value={settings.zThreshold} onChange={e => set("zThreshold", Math.max(0, Math.min(20, Number(e.target.value) || 0)))} data-testid="input-z-threshold" /></div>
@@ -53,7 +57,7 @@ export function SettingsBar({ display = false, id }: { display?: boolean; id?: s
         {toggles.map(([label, key]) => <label className="switch-row" key={key}><span>{label}</span><input className="switch" type="checkbox" checked={Boolean(settings[key])} onChange={e => set(key, e.target.checked as never)} data-testid={`toggle-${String(key)}`} /></label>)}
       </div>
       <div className="sb-foot">
-        <span>{isDefault ? <>Site default · <Link href="/how-it-works#model">what the history shows</Link></> : "Custom settings"} · <Link href="/how-it-works#settings">What each setting does</Link></span>
+        <span>{isDefault ? <>Site default · <Link href="/how-it-works/watchlist#reading">what a reading means</Link></> : "Custom settings"} · <Link href="/how-it-works/settings">What each setting does</Link></span>
         {!isDefault && <button className="btn sb-btn" onClick={() => setSettings(s => ({ ...s, ...defaultSignalSettings }))} data-testid="button-reset-model">Reset to the site default</button>}
       </div>
     </div>}

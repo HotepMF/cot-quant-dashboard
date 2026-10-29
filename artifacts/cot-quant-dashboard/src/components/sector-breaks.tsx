@@ -24,7 +24,7 @@ export function SectorBreakRecord() {
   const recent = [...cases].reverse().slice(0, 12);
   return <section className="card section" data-testid="sector-break-record">
     <div className="card-head"><div><h2 className="panel-title">Sector breaks after a reading: the live log</h2>
-      <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>In the week after each 8-week reading, when half the rest of its sector breaks last week's range the reading's way, and how the reading's market moved next · <Link href="/how-it-works#sector-breaks">method</Link></div></div></div>
+      <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>In the week after each 8-week reading, when half the rest of its sector breaks last week's range the reading's way, and how the reading's market moved next · <Link href="/how-it-works/watchlist">how to read it</Link></div></div></div>
     <div className="card-body">
       <div className="sx-scroll"><table className="sx-table">
         <thead><tr><th /><th className="num">Cases</th><th className="num">1 hour</th><th className="num">2 hours</th><th className="num">4 hours</th><th className="num">Rest of session</th></tr></thead>

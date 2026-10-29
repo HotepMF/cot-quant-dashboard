@@ -450,7 +450,7 @@ function Dashboard() {
       </section>
 
       <section id="signals" className="section">
-        <div style={{ marginBottom: 13, display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12 }}><div><div className="eyebrow">Indicator semantics</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Readings &amp; weekly ledger</h2></div><Link href="/how-it-works#settings" className="subtle print-hidden" style={{ fontSize: 12 }}>How the reading modes work</Link></div>
+        <div style={{ marginBottom: 13, display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12 }}><div><div className="eyebrow">Indicator semantics</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Readings &amp; weekly ledger</h2></div><Link href="/how-it-works/settings" className="subtle print-hidden" style={{ fontSize: 12 }}>How the reading modes work</Link></div>
         <div className="card">
           <div className="card-head"><div><h3 className="panel-title">Weekly calculations</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · one record per week report date; latest row drives readout</div></div>
             <div className="toolbar print-hidden">{exportButton("weekly-ledger")}<button className="btn" onClick={() => setTablePage(p => Math.max(0, p - 1))} disabled={tablePage === 0}>Previous</button><button className="btn" onClick={() => setTablePage(p => Math.min(Math.ceil(computed.length / 10) - 1, p + 1))} disabled={(tablePage + 1) * 10 >= computed.length}>Next</button></div>
@@ -483,7 +483,7 @@ function App() {
     <Route path="/" component={Dashboard} />
     <Route path="/sector-signals" component={SectorSignalsPage} />
     <Route path="/signal-watchlist" component={SignalWatchlistPage} />
-    <Route path="/how-it-works" component={HowItWorksPage} />
+    <Route path="/how-it-works/:page?" component={HowItWorksPage} />
     <Route path="/sectors" component={SectorsPage} />
     <Route path="/invisible-hand" component={InvisibleHandPage} />
     <Route component={NotFound} />

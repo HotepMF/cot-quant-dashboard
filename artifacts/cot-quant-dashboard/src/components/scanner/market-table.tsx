@@ -1,7 +1,7 @@
 import { useLocation } from "wouter";
 import { ArrowDown, ArrowUp, ArrowUpRight } from "lucide-react";
 import { prepareDetailMarket, useSharedSettings } from "@/lib/settings-store";
-import { OscChip } from "@/components/oscillators";
+import { OscCell } from "@/components/oscillators";
 import type { LiveReport } from "@/lib/settings-store";
 import type { ScanRow } from "@/hooks/use-screener";
 import { nfmt, nsigned, sectorLabel, shortDate, unavailableReason } from "@/hooks/use-screener";
@@ -90,6 +90,7 @@ export function MarketTable({ rows, report, lookback, showSector, rank, sortKey,
         {head("zScore", "Z-score")}
         {head("cycle", "Cycle")}
         <th>CH / LT / ST cycle</th>
+        <th title="Ultimate Oscillator · Williams %R, daily, from the last settled close">UO · %R</th>
         {head("weeklyChange", "Wk change")}
         {head("oiChange", "OI move")}
         {head("reportDate", "Report")}
@@ -107,11 +108,12 @@ export function MarketTable({ rows, report, lookback, showSector, rank, sortKey,
               {reason && <span className="scan-reason">{reason}</span>}
             </td>
             {showSector && <td className="subtle">{sectorLabel(r.sector)}</td>}
-            <td><SignalBadge row={r} />{r.largeMove && r.status === "ready" && <span style={{ marginLeft: 5 }}><MoveBadge change={r.weeklyChange} /></span>}{r.oiAlert && <span className="badge warn" style={{ marginLeft: 5 }} title="Absolute open-interest change met the configured threshold">OI alert</span>}{r.flagged && <OscChip code={r.code} />}</td>
+            <td><SignalBadge row={r} />{r.largeMove && r.status === "ready" && <span style={{ marginLeft: 5 }}><MoveBadge change={r.weeklyChange} /></span>}{r.oiAlert && <span className="badge warn" style={{ marginLeft: 5 }} title="Absolute open-interest change met the configured threshold">OI alert</span>}</td>
             <td><ScoreMeter value={r.active ? r.setupScore : null} tone={tone} /></td>
             <td className="mono">{r.zScore == null ? "—" : `${nsigned(r.zScore, 2)}σ`}</td>
             <td className="mono">{r.cycle == null ? "—" : `${nfmt(r.cycle, 0)}%`}</td>
             <td className="mono subtle">{nfmt(r.commercialCycle, 0)} / {nfmt(r.largeCycle, 0)} / {nfmt(r.smallCycle, 0)}</td>
+            <td className="mono"><OscCell code={r.code} /></td>
             <td className={`mono ${r.weeklyChange == null || r.weeklyChange === 0 ? "change-flat" : r.weeklyChange > 0 ? "change-up" : "change-down"}`}>{nsigned(r.weeklyChange)}</td>
             <td className={`mono ${r.oiChange == null || r.oiChange === 0 ? "change-flat" : r.oiChange > 0 ? "change-up" : "change-down"}`}>{r.oiChange == null ? "—" : `${nsigned(r.oiChange, 1)}%`}</td>
             <td className="mono subtle">{shortDate(r.reportDate)}</td>

@@ -1,28 +1,67 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
-import { Link } from "wouter";
-import { Moon, Sun } from "lucide-react";
+import { Link, useLocation, useParams } from "wouter";
+import { ArrowLeft, ArrowRight, Moon, Sun } from "lucide-react";
 import { CORE_GROUPS, CORE_MARKETS, SPECIALTY_MARKETS } from "@workspace/cot-engine";
 import { useTheme } from "@/components/scanner/scanner-shell";
 import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
 
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return <section id={id} className="card hiw-section" data-testid={`section-${id}`}>
+/** The sub-pages, in reading order: one per sidebar page, then settings, using it, and the data. */
+const PAGES = [
+  { slug: "start", label: "Start here" },
+  { slug: "market-detail", label: "Market detail" },
+  { slug: "watchlist", label: "Watchlist" },
+  { slug: "sector-positioning", label: "Sector positioning" },
+  { slug: "spdr", label: "SPDR sectors" },
+  { slug: "invisible-hand", label: "The Invisible Hand" },
+  { slug: "settings", label: "Settings" },
+  { slug: "using-it", label: "Using it day to day" },
+  { slug: "data", label: "Data & limits" },
+] as const;
+type Slug = typeof PAGES[number]["slug"];
+
+/** Earlier addresses (the single long page's anchors, then the first sub-pages) and where they live now. */
+const OLD_ANCHORS: Record<string, string> = {
+  cot: "start#groups", markets: "data#markets", consolidated: "data#consolidated", history: "data#history",
+  reading: "watchlist#reading", model: "watchlist#reading", settings: "settings",
+  sectors: "spdr", "invisible-hand": "invisible-hand", curve: "market-detail#curve", updates: "data", limits: "data#limits",
+};
+const OLD_PAGES: Record<string, string> = {
+  "cot-report": "start#groups", reading: "watchlist#reading", "eight-week": "watchlist#reading", pages: "spdr",
+};
+
+function Section({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
+  return <section id={id} className="card hiw-section" data-testid={id ? `section-${id}` : undefined}>
     <div className="card-head"><h2 className="panel-title">{title}</h2></div>
     <div className="card-body hiw-body">{children}</div>
   </section>;
 }
+/** Detail tucked away until asked for. */
+const More = ({ label = "More", children }: { label?: string; children: ReactNode }) =>
+  <details className="hiw-more"><summary>{label}</summary><div className="hiw-body">{children}</div></details>;
+/** "How to read it": the one-line version of a page. */
+const Quick = ({ children }: { children: ReactNode }) => <div className="notice hiw-quick">{children}</div>;
+const to = (slug: Slug, hash = "") => `/how-it-works/${slug}${hash ? `#${hash}` : ""}`;
 
 export function HowItWorksPage() {
   const [isDark, setIsDark] = useTheme();
-  useEffect(() => {
-    document.title = "How it works · COT Quant";
-    // Links like /how-it-works#model open at that section; otherwise start at the top.
-    const target = window.location.hash ? document.getElementById(window.location.hash.slice(1)) : null;
-    if (target) target.scrollIntoView({ block: "start" }); else window.scrollTo(0, 0);
-  }, []);
-  const thin = CORE_MARKETS.filter(m => m.quality === "thin").map(m => m.symbol).join(", ");
+  const params = useParams<{ page?: string }>();
+  const [, navigate] = useLocation();
+  const current = PAGES.find(p => p.slug === params.page) ?? PAGES[0];
+  const index = PAGES.indexOf(current);
 
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    // Earlier links: the single long page's anchors and the first sub-page addresses.
+    if (!params.page && hash && OLD_ANCHORS[hash]) { navigate(`/how-it-works/${OLD_ANCHORS[hash]}`, { replace: true }); return; }
+    if (params.page && OLD_PAGES[params.page]) { navigate(`/how-it-works/${OLD_PAGES[params.page]}`, { replace: true }); return; }
+    if (params.page && !PAGES.some(p => p.slug === params.page)) { navigate("/how-it-works", { replace: true }); return; }
+    document.title = `${current.label} · How it works · COT Quant`;
+    const target = hash ? document.getElementById(hash) : null;
+    if (target) target.scrollIntoView({ block: "start" }); else window.scrollTo(0, 0);
+  }, [params.page, current.label, navigate]);
+
+  const prev = PAGES[index - 1], next = PAGES[index + 1];
   return <div className="shell">
     <aside className="sidebar">
       <SiteBrand />
@@ -31,173 +70,208 @@ export function HowItWorksPage() {
     <main className="main">
       <header className="topline">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 9 }}>Reference</div>
-          <h1 className="page-title display">How it works</h1>
-          <p className="subtle scan-lede">What the COT report is, how this site reads it, which markets it shows, how the SPDR sectors and Invisible Hand pages work, when data updates, and what it can't tell you.</p>
+          <div className="eyebrow" style={{ marginBottom: 9 }}>How it works</div>
+          <h1 className="page-title display">{current.label}</h1>
         </div>
         <div className="toolbar print-hidden">
           <button className="icon-btn" aria-label="Toggle dark mode" title="Toggle theme" onClick={() => setIsDark(v => !v)}>{isDark ? <Sun size={15} /> : <Moon size={15} />}</button>
         </div>
       </header>
 
-      <nav className="hiw-toc print-hidden" aria-label="On this page">
-        {[["cot", "The COT report"], ["reading", "Reading the site"], ["model", "The default model"], ["settings", "Settings"], ["markets", "Which markets"], ["sectors", "SPDR sectors"], ["invisible-hand", "The Invisible Hand"], ["sector-breaks", "Sector breaks"], ["curve", "Futures curve"], ["updates", "Data & updates"], ["consolidated", "Consolidated lines"], ["history", "History notes"], ["limits", "What it can't tell you"]].map(([id, label]) =>
-          <a key={id} href={`#${id}`} className="ms-chip" onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>{label}</a>)}
+      <nav className="hiw-toc print-hidden" aria-label="How it works pages">
+        {PAGES.map((p, i) => <Link key={p.slug} href={to(p.slug)} className="ms-chip" aria-pressed={p.slug === current.slug} aria-current={p.slug === current.slug ? "page" : undefined}
+          data-testid={`hiw-tab-${p.slug}`}>{i + 1}. {p.label}</Link>)}
       </nav>
 
-      <div className="hiw-grid">
-        <Section id="cot" title="The COT report">
-          <p>Every week the CFTC (the U.S. futures regulator) publishes the <b>Commitments of Traders</b> report: who holds positions in each futures market. Positions are as of <b>Tuesday</b> and published <b>Friday at 3:30 p.m. ET</b>; this site updates automatically after each release.</p>
-          <p>The Legacy report this site uses splits traders into three groups:</p>
-          <ul>
-            <li><b>Commercial hedgers</b>: producers and users of the underlying, such as oil companies, farmers, refiners and food makers, hedging their business. Their reason for trading is fundamentally different from everyone else's.</li>
-            <li><b>Large traders</b> (non-commercials): funds and other speculators trading for profit, many of them trend followers.</li>
-            <li><b>Small traders</b>: positions too small to be reported individually.</li>
-          </ul>
-          <p>Commercials and large traders usually sit on opposite sides: when funds chase a trend, hedgers take the other side.</p>
-        </Section>
+      <div className="hiw-page" data-testid={`hiw-page-${current.slug}`}>{CONTENT[current.slug]()}</div>
 
-        <Section id="reading" title="Reading the site">
-          <ul>
-            <li><b>Net position</b>: longs minus shorts for each group.</li>
-            <li><b>Z-score</b>: how far today's net position sits from its average over the lookback (8 weeks by default, using the raw net position; see The default model), in standard deviations. ±2 marks an extreme.</li>
-            <li><b>Cycle rank</b>: where today's net position sits between the lowest (0%) and highest (100%) reading in the market's full history.</li>
-            <li><b>Confluence</b>: commercials and large traders at opposite extremes of their cycle ranks at the same time.</li>
-            <li><b>Watch</b> with a <b>buying / selling</b> tag: no setup, but the selected group's net position changed unusually much in one week (more than half the Z threshold in standard deviations of its recent range). Green ▲ reads positive and red ▼ negative, the way the model reads that group: it follows commercials and leans against speculators, so "Commercials buying" or "Large specs selling" is green. It describes the week and can be the start of a build toward an extreme; it has not been tested on its own.</li>
-          </ul>
-          <p>Readings are <b>mechanical rule states</b> from the data, not recommendations.</p>
-        </Section>
-
-        <Section id="model" title="The default model">
-          <p>Market detail, Sector positioning and the Watchlist use the same rules as the TradingView indicator "Commitment of Traders: Total Enhanced + OI". Since Oct 27, 2026 the site default is <b>Both (AND gate)</b> on <b>Commercial Hedgers</b>, with the <b>standard Z-score</b> of their net position over <b>8 weeks</b>, a Z threshold of <b>2.25</b> and a confluence cycle threshold of <b>75%</b>. In plain terms: commercials have moved to an extreme for the last two months, and are near the end of their all-time range while large speculators are at the other end. You can change any setting; the site remembers yours.</p>
-          <p><b>What the history shows.</b> We measured 400 settings (lookbacks 8 to 64 weeks, Z 1.5 to 2.5, cycle thresholds, raw and OI-normalized) on 43 core markets, 2002–2026, by what price did in the week after each report:</p>
-          <ul>
-            <li>At this setting, the week after the report moved in the commercials' direction <b>58% of the time</b> (normal: 50%), by about <b>+0.2 of a normal week's move</b> on average: roughly +0.4% for the S&amp;P 500 or +0.9% for crude, before costs.</li>
-            <li>It held in both 2002–2013 and 2014–2026, in 26 of 41 markets, and the nearby settings agreed (29 of them showed the same direction; none showed the opposite).</li>
-            <li>It is a short effect: most of it is gone by 4 weeks and none is left by 13.</li>
-            <li>It is rare: a few readings a quarter across all markets.</li>
-            <li>After counting all 400 settings we tried, the chance that the best of them looks this good by luck is about 10% (the usual bar is 5%). Each new week adds to the record.</li>
-          </ul>
-          <p><b>Short-term oscillators next to it.</b> Market pages and the scanners also show Larry Williams' <b>Ultimate Oscillator</b> (7, 14, 28 days) and <b>%R</b> (14 days). In our tests the 8-week reading worked best on a pullback: on the 28 weeks when the Ultimate Oscillator was oversold for a long reading (under 30) or overbought for a short one (over 70), the next week went the commercials' way 75% of the time, about +0.7 of a normal week. Seasonal and trend tools added nothing. 28 cases is a small sample, so every new reading is logged automatically with its outcome one week later, and the live record is shown on the Watchlist.</p>
-          <p>The previous default (OI-normalized Z over 16 weeks, Z 2.0, cycle 65%) showed no lean in the week after the report. It is still one click away in Settings.</p>
-        </Section>
-
-        <Section id="settings" title="Settings">
-          <p>The settings bar sits under the market picker on market detail and at the top of Sector positioning and the Watchlist. One set of settings drives all three pages, and the site remembers yours. Click the bar to open it; "site default" or "custom" shows which you are using.</p>
-          <ul>
-            <li><b>Participant</b>: the group whose Z-score sets the reading. Commercial hedgers are read in their own direction (green when extreme long); large and small traders are read against theirs (red when extreme long).</li>
-            <li><b>Signal mode</b>: <b>Z-Score Only</b> shows a reading when the participant's net position is an extreme for the lookback. <b>COT Confluence</b> shows a reading when commercials and large traders sit at opposite ends of their full history (cycle rank), with small traders as optional confirmation. <b>Both (AND gate)</b> needs the two to agree in the same week. It is the strictest mode and the site default.</li>
-            <li><b>Z calculation</b>: <b>Standard</b> uses the raw net position. <b>OI normalization</b> divides each week's net position by that week's open interest first, so a market that has grown or shrunk is compared fairly. A week with missing open interest leaves no Z until the window is complete again.</li>
-            <li><b>Lookback</b>: how many weeks the Z-score compares against (8 by default).</li>
-            <li><b>Z threshold</b>: how many standard deviations count as an extreme (2.25 by default).</li>
-            <li><b>Confluence cycle</b>: how far toward the ends of their history commercials and large traders must be (75%, the default, means commercials at or above 75% and large traders at or below 25%, or the reverse).</li>
-            <li><b>OI move alert</b>: flags a week when open interest changes by at least this percentage.</li>
-            <li><b>Switches</b>: Z-score detection on or off; small trader confirmation for confluence; large position change flags a weekly change larger than half the Z threshold in standard deviations.</li>
-            <li><b>Market detail display</b>: buy / sell labels and the chart label, the chart highlight style (shapes, background or both), and the table text size. These change what you see, not the calculations.</li>
-          </ul>
-          <p>A reading is a mechanical rule state, not a recommendation. See The default model above for what our tests found about these settings.</p>
-        </Section>
-
-        <Section id="markets" title="Which markets">
-          <p><b>Core ({CORE_MARKETS.filter(m => m.code).length})</b>: the markets most traders watch, grouped like a futures watchlist ({CORE_GROUPS.map(g => g.label).join(", ")}). The scanners cover these.</p>
-          <p><b>Specialty ({SPECIALTY_MARKETS.length})</b>: markets that tie into the site's analysis, such as PJM, ERCOT and CAISO power, SOFR and the Ultra Treasuries. They're in the market picker, each with a note on why.</p>
-          <p><b>Advanced</b>: every market the CFTC publishes (about 370), reachable from the bottom of the market picker. Not curated; many are regional swaps or thinly traded.</p>
-          <p><b>Quality labels.</b> The CFTC only publishes a market when at least 20 large traders hold reportable positions. <b>Thin</b> ({thin}) means few reporting traders or a short history: read with care. <b>Not published</b>: COMEX aluminum (ALI) rarely meets the 20-trader rule, and the dollar Nikkei (NKD) dropped out in March 2026, so the site shows the yen Nikkei instead.</p>
-        </Section>
-
-        <Section id="sectors" title="SPDR sectors">
-          <p>The <Link href="/sectors">SPDR sectors</Link> page connects positioning to the stock market: each of the 11 Select Sector SPDR ETFs against the S&amp;P 500 (SPY), with the futures positioning underneath it.</p>
-          <ul>
-            <li><b>Performance</b>: each sector's move relative to SPY over 1 day, 1 week, 1 month, 3 months and 1 year.</li>
-            <li><b>How unusual (σ)</b>: how far the 3-month and 1-year relative moves sit from the sector's own norm over the past three years. 2σ or more is rare and shown in amber.</li>
-            <li><b>Momentum</b>: the last 4 weeks against that norm. ▲ rising, ► flat or ▼ falling, with "turning up" or "fading" when it differs from the 3-month trend. Our tests found no reliable tendency for sector trends to continue or reverse.</li>
-            <li><b>Underneath</b>: the futures linked to each sector, such as crude, gasoline and diesel for energy, copper for industrials, power and gas for utilities, and Nasdaq-100 for tech. Health care, staples and discretionary have no clean futures link and are shown on price only.</li>
-            <li><b>Positioning monitor</b>: where funds sit in their 3-year range, as a percentile. Funds are managed money for commodities and leveraged funds for financial futures, shown against producers or asset managers. The 90th percentile or above, or the 10th or below, is labeled crowded. A low reading can still be a net long.</li>
-          </ul>
-          <p>Panel text is generated from the numbers each day and describes what is happening, not what comes next.</p>
-          <p><b>Watch notes</b> report co-movement we found between the site's previous default COT filter (16-week, OI-normalized) on a sector's futures and that sector versus SPY, 2002–2026. Energy is the one consistent link: XLE has tended to move with the filter on crude, gasoline and natural gas. Utilities moved the opposite way to a commercial extreme long in natural gas. Metals showed nothing for materials or industrials. Samples are small (about 30 cases per market) and we checked many links, so treat these as things to watch, not rules.</p>
-        </Section>
-
-        <Section id="invisible-hand" title="The Invisible Hand">
-          <p><Link href="/invisible-hand">The Invisible Hand</Link> is the weekly macro backdrop: the broad forces behind the market and who is positioned in each.</p>
-          <ul>
-            <li><b>Theme cards</b>: credit, rates, power and gas, volatility, and the AI and power trade. A card shows a label (such as "steepener" or "high volatility") only where that label passed our accuracy and stability tests; otherwise it shows the readings alone. Cards waiting on a data source say so.</li>
-            <li><b>Who is positioned</b>: for each theme, the trader groups active in the related futures, with their net and gross positions as a share of open interest, where that sits in its 3-year range, and the 4-week change. Rows with fewer than 20 traders, or where four traders hold more than half of one side, are withheld because they would describe a few firms, not a market.</li>
-            <li><b>Past pattern</b>: what sectors did alongside each state in our 1999–2026 tests, shown only where the pattern beat chance. It describes what happened at the same time, not what came next.</li>
-            <li><b>Expected daily range</b>: the typical (median) and wide (1 day in 5) ES and NQ day in the current volatility state, in percent and in points, from 2002–2026 data, next to what the last 20 sessions actually did. Ranges are tested; direction is not.</li>
-            <li><b>Next two weeks</b>: FOMC decisions, CPI and payrolls (from the Federal Reserve and BLS schedules) and expirations (from exchange rules), each with what our tests found. FOMC and payrolls days have run about 20% wider than other days in the same volatility state. CPI days, options expirations, quarterly "witching" and the ES/NQ roll showed no reliable change in the day's range.</li>
-            <li><b>Crowded watch</b>: core markets where large speculators sit in the top or bottom 10% of their 3-year range. Crowded readings were not followed by bigger moves in our tests, so treat this as where risk sits, not a timing signal.</li>
-            <li><b>Event tags</b>: market rows here and on the SPDR sectors page carry a solid tag for scheduled events in the next 7 days and an outlined "in data" tag for events that fell inside the week the latest CFTC report covers, so a position change can be read next to the release that happened that week.</li>
-            <li><b>Timing</b>: positioning updates minutes after each Friday CFTC release; prices and yields after each close.</li>
-            <li><b>Our read</b> (coming soon): a short weekly read, with each statement shown next to the record behind it.</li>
-          </ul>
-        </Section>
-
-        <Section id="sector-breaks" title="Sector breaks">
-          <p>In the week after each 8-week reading, the Watchlist logs whether the rest of the market's sector broke last week's range the reading's way, and what the reading's market did next. It is recorded as evidence of what is happening, not a forecast.</p>
-          <ul>
-            <li><b>The week</b>: from 17:00 New York on the release Friday to the next Friday's 17:00. Last week's range is its highest and lowest 15-minute close.</li>
-            <li><b>A break</b>: the first 15-minute close beyond that range, as long as the other side was not closed beyond first.</li>
-            <li><b>A sector break</b>: the moment at least half of the <i>other</i> markets in the sector have broken the reading's way (for example, 2 of 3 for crude: gasoline, heating oil, natural gas). Sectors: equity indices, energy, metals, Treasuries, currencies, crypto, grains, livestock, softs. The dollar index has no sector.</li>
-            <li><b>What followed</b>: the reading's market's move from that 15-minute close over the next 1, 2 and 4 hours and to the end of the session (17:00 New York), in its direction, in units of a normal day's move (the last 20 days' standard deviation).</li>
-            <li><b>What we found</b>: on 2010-2026 15-minute data (11 markets), 12 cases, all horizons positive and growing through the session (+0.10 after an hour, +0.63 by the session's end), but too few to rule out luck. On daily data across all 43 markets, the sector breaking first was the best lead (70 cases, 59% of the next week went the reading's way) without passing our multiple-test check. The live log is the test.</li>
-          </ul>
-        </Section>
-        <Section id="curve" title="Futures curve">
-          <p>Each market detail page has a <b>curve</b> gauge and a <b>volatility</b> gauge, and The Invisible Hand lists the curves that are stretched. All of it is labeled <b>Measured · not a signal</b>.</p>
-          <ul>
-            <li><b>Backwardation</b>: the nearest contract trades above the next one. Buyers pay up for delivery now, which usually means tight supply. <b>Contango</b> is the reverse, the normal shape when supply is ample and storage costs money.</li>
-            <li><b>EOD spread</b>: front contract minus second contract at the day's close, in price and in dollars per contract. Positive = backwardation. The small line shows the same two contracts over about 3 months.</li>
-            <li><b>Carry per year</b>: ln(front ÷ second), divided by the years between the two delivery months, so markets with monthly and quarterly contracts compare fairly.</li>
-            <li><b>The gauge</b> places today's carry within that market's own 2002–2024 history (VIX: 2004–2026). The colored ends are its deepest 20% each way. A gold curve near flat can read "deep backwardation for gold" while still in contango, because gold is almost always in contango.</li>
-            <li><b>Volatility gauge</b>: how big moves are now compared with what is usual for that market. It uses the front contract's last 20 daily moves, annualised, divided by the market's own 5-year normal (roll days removed). Under 0.75× reads <b>Calm</b>, 0.75–1.25× <b>Normal</b>, 1.25–1.75× <b>Elevated</b>, and 1.75× or more <b>Extreme</b>. These are round reading bands, not tested signals. "Typical day" is one day's usual move at the current volatility, in percent and in dollars for one contract; about two days in three stay inside it.</li>
-            <li><b>What we found</b>: in commodities, volatility over the next 4 weeks ran about 19% above a flat curve in deep backwardation, and about 13% above in deep contango (2002–2024, 23 markets). That matches published research: tight inventories make prices jumpier (Fama and French 1988; Ng and Pirrong 1994), and volatility rises with the curve's slope in both directions (Kogan, Livdan and Yaron 2009). For index, rate, currency and crypto futures the curve mostly reflects interest rates and dividends, and we found no effect.</li>
-            <li><b>What we did not find</b>: using the curve as a filter on the site's COT readings did not improve them in our pre-registered test. Commercials are usually positioned against the curve, so the COT reading already carries most of what the curve says. Use the curve for risk (stops, size), not for direction.</li>
-            <li><b>Limits</b>: the historical ranges come from research data that does not always use the front two contracts, so they are close, not exact. Prices are Yahoo end-of-day (VIX: Cboe settlements). Lumber has too little history for a range. The site saves every day's curve, so the ranges can move to our own data once there is enough.</li>
-          </ul>
-        </Section>
-
-        <Section id="updates" title="Data & updates">
-          <ul>
-            <li><b>Nothing here is real-time.</b> The site shows end-of-day and weekly data, built for understanding the backdrop, not for timing trades.</li>
-            <li><b>COT positioning</b>: weekly. Positions as of Tuesday are published Friday at 3:30 p.m. ET, and the site checks for the release automatically. The CFTC plans to publish twice a week from late 2026 (positions as of Monday on Wednesday, as of Wednesday on Friday). The site will keep one row per week, the Friday release, so every lookback still counts weeks; the Monday report will be shown separately as a mid-week update once the CFTC confirms the format.</li>
-            <li><b>Sector and futures prices</b>: end of day, updated on weekday evenings after the U.S. close. During the trading day the page shows the previous close. The page header shows both dates, for example "Prices Oct 21 close · CFTC Oct 13".</li>
-            <li><b>If prices stop updating</b>, the page shows a warning with the last update date instead of quietly showing old numbers.</li>
-            <li><b>The Invisible Hand</b>: positioning minutes after each Friday CFTC release; prices, volatility and yields after each weekday close.</li>
-            <li><b>Sources</b>: CFTC Commitments of Traders (Legacy, Disaggregated and Traders in Financial Futures); end-of-day prices from Yahoo Finance (futures curves: individual contracts; VIX futures: Cboe settlements); Treasury yields from the U.S. Treasury's daily par yield curve.</li>
-          </ul>
-        </Section>
-
-        <Section id="consolidated" title="Consolidated lines">
-          <p>For the S&amp;P 500, Nasdaq-100 and Dow, the CFTC publishes each contract separately (E-mini, micro, Dow x$5) <b>and</b> a <b>consolidated</b> line that adds them together, counting each micro as one-tenth of an E-mini. The site uses the consolidated line, because that is the whole market's positioning.</p>
-          <p>The single contracts are still available in Advanced, marked "Part of … consolidated". They tell nearly the same story: the E-mini alone is about 99% of the S&amp;P consolidated total. The trade-off is history: consolidated lines start in June 2010.</p>
-        </Section>
-
-        <Section id="history" title="History notes">
-          <ul>
-            <li>Markets are tracked by their CFTC <b>contract code</b>, so history continues when the CFTC renames a contract (many were renamed in February 2022).</li>
-            <li>Corn, soybeans and wheat changed codes in January 1998; the two codes are joined, so history runs back to 1986.</li>
-            <li>A few codes carry an unrelated earlier listing that is dropped: the euro starts in January 1999 (before that the code held the European Currency Unit), the Russell 2000 in August 2017 (when it returned to CME from ICE), and the New Zealand dollar in August 2004.</li>
-            <li>Lumber is the new contract launched in August 2022; the old contract is a different size and isn't joined.</li>
-          </ul>
-        </Section>
-
-        <Section id="limits" title="What it can't tell you">
-          <p>Positioning describes <b>who is crowded where</b>, not when prices turn. In our tests on 2007–2026 data:</p>
-          <ul>
-            <li>Positioning extremes were not reliably followed by bigger or sharper moves.</li>
-            <li>Sectors on the commercials' side of an extreme did modestly better, but not by enough to rule out chance.</li>
-            <li>Extremes can last for weeks or months while prices keep going.</li>
-          </ul>
-          <p>Use it as context alongside price, not as a timing signal. Nothing on this site is investment advice.</p>
-        </Section>
-      </div>
+      <nav className="hiw-pager print-hidden" aria-label="Previous and next">
+        {prev ? <Link href={to(prev.slug)} className="btn" data-testid="hiw-prev"><ArrowLeft size={14} />{prev.label}</Link> : <span />}
+        {next ? <Link href={to(next.slug)} className="btn" data-testid="hiw-next">{next.label}<ArrowRight size={14} /></Link> : <span />}
+      </nav>
 
       <footer className="scan-foot">
         <span>Sources: CFTC Commitments of Traders; end-of-day prices from Yahoo Finance; U.S. Treasury yields.</span>
-        <span>Setups are mechanical rule states, not recommendations.</span>
+        <span>Readings are mechanical rule states, not recommendations. Not investment advice.</span>
       </footer>
     </main>
     <SiteMobileNav />
   </div>;
 }
+
+const CONTENT: Record<Slug, () => ReactNode> = {
+  start: () => <>
+    <Section title="What this site is">
+      <p>A <b>data overlay</b> for futures traders: where each group of traders is positioned, how unusual that is against its own history, and what is happening in prices around it. It is not a trading model and does not tell you what to do. Colors only show which way a number leans.</p>
+      <ul>
+        <li><b>It is weekly data.</b> Positions are reported once a week, so the site describes the backdrop for the week, not the next hour.</li>
+        <li><b>Readings are mechanical.</b> "Extreme long" means the numbers met a rule, not that anyone made a call.</li>
+        <li><b>Settings are yours.</b> They are saved in your browser, and the page tells you when they differ from the site default.</li>
+      </ul>
+    </Section>
+    <Section id="groups" title="The report behind it">
+      <p>Every week the CFTC (the U.S. futures regulator) publishes the <b>Commitments of Traders</b> report: positions as of <b>Tuesday</b>, published <b>Friday at 3:30 p.m. ET</b>. The site picks up each release within minutes. It splits traders into three groups:</p>
+      <ul>
+        <li><b>Commercial hedgers</b>: producers and users of the underlying (oil companies, farmers, refiners, food makers) hedging their business.</li>
+        <li><b>Large traders</b>: funds and other speculators trading for profit, many of them trend followers.</li>
+        <li><b>Small traders</b>: positions too small to be reported individually.</li>
+      </ul>
+      <p>Commercials and large traders usually sit on opposite sides: when funds chase a trend, hedgers take the other side. The site reads commercials in their own direction and speculators against theirs.</p>
+    </Section>
+    <Section title="The pages">
+      <p>Each page in the sidebar has its own page here, in the same order: <Link href={to("market-detail")}>Market detail</Link>, <Link href={to("watchlist")}>Watchlist</Link>, <Link href={to("sector-positioning")}>Sector positioning</Link>, <Link href={to("spdr")}>SPDR sectors</Link> and <Link href={to("invisible-hand")}>The Invisible Hand</Link>. <Link href={to("using-it")}>Using it day to day</Link> puts it all together.</p>
+    </Section>
+  </>,
+
+  "market-detail": () => <>
+    <Quick><b>How to read it:</b> pick a market and start with the <b>Current readout</b> (is there a reading, how extreme is it), then the chart to see how it got there, then curve and volatility to see how big moves are right now.</Quick>
+    <Section title="Market overview">
+      <ul>
+        <li><b>Weekly net positioning</b> (the chart): each group's net position (longs minus shorts) week by week. The shaded band is the 8-week window the Z-score uses; the dashed lines mark the ±2.25 extremes.</li>
+        <li><b>Current readout</b>: the latest week in words. The reading (Extreme long, Extreme short or none), the Z-score, whether commercials and large traders sit at opposite ends of their history (confluence), any open-interest alert, and the <b>Ultimate Oscillator · %R</b> (short-term overbought / oversold on daily prices).</li>
+        <li id="curve"><b>Curve &amp; volatility</b>: the dial shows whether the nearest contract trades above the next (<b>backwardation</b>, usually tight supply) or below it (<b>contango</b>), against the market's own history. The volatility gauge compares the last 20 days of moves with the market's 5-year normal (Calm, Normal, Elevated, Extreme), and <b>typical day</b> is one day's usual move in percent and dollars per contract.</li>
+      </ul>
+    </Section>
+    <Section title="Positioning">
+      <ul>
+        <li><b>Positioning profile</b>: one card per group with its weekly change, Z-score, delta score (how big this week's change is against recent weeks) and where it sits in its observed range.</li>
+        <li><b>Weekly position change</b>: each week's change as a bar. Tall bars are big shifts.</li>
+        <li><b>Open interest profile</b>: total contracts open. Rising open interest means new money coming in; falling means positions closing.</li>
+      </ul>
+    </Section>
+    <Section title="Weekly readings">
+      <p>The ledger: one row per report with every number the readout uses, newest first, so you can see how a reading built up week by week. Each table can be downloaded.</p>
+    </Section>
+  </>,
+
+  watchlist: () => <>
+    <Quick><b>How to read it:</b> every core market in one table. Start with the rows marked <b>Extreme</b>, then <b>Watch</b>. Read across: how extreme (Z, cycle), which way this week went (Wk change), and where price sits short term (UO · %R).</Quick>
+    <Section id="reading" title="The columns">
+      <ul>
+        <li><b>State</b>: <b>Extreme long / short</b> when the 8-week reading is met (with the site default: commercials' Z-score past ±2.25 over 8 weeks, commercials at 75% or more of their history and large traders at 25% or less, or the reverse). <b>Watch · Commercials buying / selling</b> when there is no extreme but the week's change was unusually large. <b>OI alert</b> when open interest jumped.</li>
+        <li><b>Extremity</b> (0–100): how far past the rule a reading is. Not a probability.</li>
+        <li><b>Z-score</b>: how far this week's net position is from its 8-week average, in standard deviations.</li>
+        <li><b>Cycle</b> and <b>CH / LT / ST cycle</b>: where commercials, large traders and small traders sit between the lowest (0%) and highest (100%) reading in the market's history.</li>
+        <li><b>UO · %R</b>: the Ultimate Oscillator and Williams %R on daily prices. Highlighted when the oscillator is on the pullback side of an active reading: oversold (under 30) for a long, overbought (over 70) for a short.</li>
+        <li><b>Wk change</b>, <b>OI move</b>, <b>Report</b>: this week's change in net position, the change in open interest, and the report date.</li>
+      </ul>
+    </Section>
+    <Section title="Filters and the record">
+      <p>Filter by group, by state (Active shows only markets with something going on), by direction and by type, and sort by any column. The <b>8-week reading: the record</b> card logs every reading since Oct 20, 2026 with how the next week went, so the tally builds as the weeks go by.</p>
+    </Section>
+  </>,
+
+  "sector-positioning": () => <>
+    <Quick><b>How to read it:</b> the same readings as the Watchlist, grouped by sector. Look at the counts at the top, then any sector where several markets lean the same way.</Quick>
+    <Section title="What's on it">
+      <ul>
+        <li><b>Counts</b>: how many markets show Extreme long and Extreme short, and how many were evaluated.</li>
+        <li><b>Sector tables</b>: equity indices, energy, metals, Treasuries, currencies, crypto, grains, livestock and softs, each with its markets, extreme readings first, then large weekly changes.</li>
+        <li><b>Extreme readings only</b>: a switch that hides the quiet markets.</li>
+      </ul>
+      <p>When several markets in one sector lean the same way, the positioning is broad rather than one market's story.</p>
+    </Section>
+  </>,
+
+  spdr: () => <>
+    <Quick><b>How to read it:</b> each row is a stock sector against the S&amp;P 500. Green is beating SPY, red is lagging, amber σ means the move is unusual for that sector. Underneath, see who is positioned in the futures tied to it.</Quick>
+    <Section title="What's on it">
+      <ul>
+        <li><b>Performance</b>: each Select Sector SPDR ETF's move relative to SPY over 1 day, 1 week, 1 month, 3 months and 1 year.</li>
+        <li><b>σ</b>: how unusual the 3-month and 1-year moves are against the sector's last three years (2σ or more is amber).</li>
+        <li><b>Momentum</b>: the last 4 weeks against that norm (▲ rising, ► flat, ▼ falling).</li>
+        <li><b>Underneath</b>: the futures linked to each sector (crude and gasoline for energy, copper for materials and industrials, power and gas for utilities, Nasdaq-100 for tech) and where funds sit in their 3-year range. The top or bottom 10% is labeled <b>crowded</b>.</li>
+        <li><b>Watch notes</b>: links between a sector and its futures worth keeping an eye on, such as energy stocks and crude.</li>
+        <li><b>Yields</b>: 2-year and 10-year Treasury yields and their 13-week change.</li>
+      </ul>
+    </Section>
+  </>,
+
+  "invisible-hand": () => <>
+    <Quick><b>How to read it:</b> the big picture for the week. Read the theme cards for the backdrop, the calendar for what is coming, and the expected range for how big an ES or NQ day usually is right now.</Quick>
+    <Section title="What's on it">
+      <ul>
+        <li><b>Theme cards</b>: credit, rates, power and gas, volatility, and the AI and power trade, each with its current readings and, where one applies, a short label such as "steepener".</li>
+        <li><b>Who is positioned</b>: the trader groups in the related futures, their position as a share of open interest, their 3-year percentile and 4-week change. Rows with fewer than 20 traders, or where four traders hold more than half of one side, are withheld.</li>
+        <li><b>Expected daily range</b>: the typical and the wide (1 day in 5) ES and NQ day for the current volatility state, in percent and points, next to what the last 20 sessions did.</li>
+        <li><b>Next two weeks</b>: FOMC, CPI, payrolls and expirations on the calendar. Solid tags are coming up; outlined tags fell inside the week the latest report covers.</li>
+        <li><b>Crowded watch</b>: markets where large speculators sit in the top or bottom 10% of their 3-year range.</li>
+      </ul>
+    </Section>
+  </>,
+
+  settings: () => <>
+    <Section title="One set of settings, every page">
+      <p>The Settings bar sits at the top of Market detail, the Watchlist and Sector positioning, and one set drives all three. It shows the active rule in short, for example <b>Both (AND gate) · Commercial Hedgers · 8-week Z · Z ≥ 2.25σ · cycle 75%</b>. Click it to open the controls.</p>
+      <p><b>Your settings are saved in your browser.</b> If they differ from the site default, an amber note says so, with <b>Use the site default</b> to switch back. Two people on different settings see different readings.</p>
+    </Section>
+    <Section title="The controls">
+      <ul>
+        <li><b>Participant</b>: the group whose Z-score sets the reading (commercial hedgers by default).</li>
+        <li><b>Reading mode</b>: <b>Z-Score Only</b> uses the Z-score alone. <b>COT Confluence</b> uses cycle ranks alone (commercials and large traders at opposite ends of their history, small traders as optional confirmation). <b>Both (AND gate)</b>, the default, needs both in the same week.</li>
+        <li><b>Z calculation</b>: <b>Standard</b> (the default) uses the raw net position. <b>OI normalization</b> divides each week's net position by that week's open interest first.</li>
+        <li><b>Lookback</b>: weeks the Z-score compares against (8). <b>Z threshold</b>: standard deviations that count as extreme (2.25). <b>Confluence cycle</b>: how close to the ends of their history the groups must be (75%).</li>
+        <li><b>OI move alert</b>: the open-interest change that raises an OI alert.</li>
+      </ul>
+      <More label="Switches and display options">
+        <ul>
+          <li><b>Z-score detection</b> on or off; <b>small trader confirmation</b> for confluence; <b>large position change</b> turns the Watch tags on or off.</li>
+          <li>On Market detail: <b>extreme labels</b> and the chart label, the highlight style and the table size. These change what you see, not the calculations.</li>
+          <li>Until Oct 27, 2026 the default was OI-normalized Z over 16 weeks, Z 2.0, cycle 65%. Visitors from before then were moved to the new default once and offered <b>Restore mine</b>.</li>
+        </ul>
+      </More>
+    </Section>
+  </>,
+
+  "using-it": () => <>
+    <Section title="Fitting it around a short-term strategy">
+      <p>The site does not give entries or exits. It gives the weekly backdrop that any short-term approach, from scalping to swing trading, can be read against. A simple routine:</p>
+      <ol className="hiw-steps">
+        <li><b>After Friday's report</b>, open the <b>Watchlist</b>: note the markets you trade that show an Extreme reading or a Watch tag, and which way.</li>
+        <li><b>Know which side the hedgers are on.</b> A reading shows which way commercials have pushed hard over the last two months. Your own setup decides when and where; the reading tells you whether that trade sits with them or with the crowd on the other side.</li>
+        <li><b>Check how big moves are.</b> The volatility gauge and typical day on <b>Market detail</b>, and the expected ES / NQ range on <b>The Invisible Hand</b>, show what a normal day looks like right now, which helps size positions and set stops and targets that fit the market.</li>
+        <li><b>Check the calendar.</b> The Invisible Hand lists FOMC, CPI, payrolls and expirations for the next two weeks.</li>
+        <li><b>Check short-term stretch.</b> The UO · %R column shows whether price is already overbought or oversold on the daily chart.</li>
+        <li><b>Trading stocks?</b> The <b>SPDR sectors</b> page shows which sectors lead or lag the S&amp;P 500 and who is positioned in the futures behind them.</li>
+        <li><b>Re-check each Friday.</b> Positions change once a week; prices and volatility update every day.</li>
+      </ol>
+      <p>In short: use your own strategy for timing, and use this site to know the backdrop it is trading into: who is positioned where, how stretched that is, how big moves are, and what is on the calendar. <b>Nothing on this site is investment advice.</b></p>
+    </Section>
+  </>,
+
+  data: () => <>
+    <Section title="Sources and update times">
+      <ul>
+        <li><b>COT positioning</b>: CFTC Commitments of Traders (Legacy, Disaggregated, Traders in Financial Futures), picked up minutes after each Friday 3:30 p.m. ET release.</li>
+        <li><b>Futures prices</b> (oscillators, curves, volatility, ES/NQ ranges, the reading record): exchange settlements, updated each weekday before the open (6–9 a.m. ET) for the previous session.</li>
+        <li><b>Sector ETF prices and SPY volatility</b>: end of day, updated on weekday evenings after the 4 p.m. close.</li>
+        <li><b>Treasury yields</b>: the U.S. Treasury's daily par yield curve.</li>
+        <li><b>Nothing is real-time.</b> Every page shows the dates its numbers are from. The SPDR page warns when prices stop updating, and Market detail flags a CFTC report that may be out of date.</li>
+        <li><b>Accuracy</b>: the numbers are checked against their sources: positions against the CFTC's published rows, ETF returns against Yahoo, yields against the Treasury.</li>
+      </ul>
+      <More label="Twice-weekly reports">
+        <p>The CFTC plans to publish twice a week from late 2026 (positions as of Monday on Wednesday, as of Wednesday on Friday). The site will keep one row per week, the Friday release, so every lookback still counts weeks. The Monday report will be shown separately as a mid-week update once the CFTC confirms the format.</p>
+      </More>
+    </Section>
+    <Section id="markets" title="Which markets">
+      <p><b>Core ({CORE_MARKETS.filter(m => m.code).length})</b>: the markets most traders watch ({CORE_GROUPS.map(g => g.label).join(", ")}), covered by the Watchlist and Sector positioning. <b>Specialty ({SPECIALTY_MARKETS.length})</b>: markets tied to the site's analysis, such as PJM, ERCOT and CAISO power, SOFR and the Ultra Treasuries. <b>Advanced</b>: every market the CFTC publishes (about 370), at the bottom of the market picker; not curated.</p>
+      <More label="Quality labels">
+        <p>The CFTC only publishes a market when at least 20 large traders hold reportable positions. <b>Thin</b> ({CORE_MARKETS.filter(m => m.quality === "thin").map(m => m.symbol).join(", ")}) means few reporting traders or a short history: read with care. COMEX aluminum rarely meets the 20-trader rule, and the dollar Nikkei is no longer published, so the site shows the yen Nikkei instead.</p>
+      </More>
+      <More label="Consolidated lines">
+        <p id="consolidated">For the S&amp;P 500, Nasdaq-100 and Dow, the CFTC publishes each contract (E-mini, micro) <b>and</b> a <b>consolidated</b> line that adds them, counting a micro as one-tenth. The site uses the consolidated line, the whole market's positioning. It starts in June 2010; the single contracts are still in Advanced.</p>
+      </More>
+      <More label="History notes">
+        <ul id="history">
+          <li>Markets are tracked by their CFTC <b>contract code</b>, so history continues when a contract is renamed (many were in February 2022).</li>
+          <li>Corn, soybeans and wheat changed codes in January 1998; the two codes are joined, so history runs back to 1986.</li>
+          <li>Some codes carry an unrelated earlier listing that is dropped: the euro starts in January 1999 (before that, the European Currency Unit), the Russell 2000 in August 2017 (its return to CME), the New Zealand dollar in August 2004.</li>
+          <li>Lumber is the contract launched in August 2022; the old one is a different size and is not joined.</li>
+        </ul>
+      </More>
+    </Section>
+    <Section id="limits" title="What it can't tell you">
+      <p>Positioning describes <b>who is crowded where</b>, not when prices turn. Extremes can last for weeks or months while prices keep going. Use it as context alongside price. <b>Nothing on this site is investment advice.</b></p>
+    </Section>
+  </>,
+};

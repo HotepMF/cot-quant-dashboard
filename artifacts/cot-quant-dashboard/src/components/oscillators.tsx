@@ -12,15 +12,18 @@ async function doc<T>(path: string): Promise<T | null> {
 export const useOscillators = () => useQuery({ queryKey: ["oscillators"], queryFn: () => doc<OscillatorSnapshot>("/api/oscillators"), staleTime: 15 * 60_000, refetchInterval: 30 * 60_000 });
 export const useCaseLog = () => useQuery({ queryKey: ["case-log"], queryFn: () => doc<CaseLog>("/api/case-log"), staleTime: 15 * 60_000, refetchInterval: 30 * 60_000 });
 
-/** Compact Ultimate Oscillator chip for scanner rows; highlighted when it sits on the pullback side of an active reading. */
-export function OscChip({ code }: { code: string }) {
+/**
+ * Ultimate Oscillator and %R cell for scanner rows (every market, last settled close); highlighted when the UO is on
+ * the pullback side of an active 8-week reading.
+ */
+export function OscCell({ code }: { code: string }) {
   const q = useOscillators();
   const m = q.data?.markets[code];
-  if (!m || m.uo == null) return null;
+  if (!m || m.uo == null) return <span className="subtle">—</span>;
   const pull = m.uoPullback === true;
-  return <span className={`badge ${pull ? (m.dir > 0 ? "good" : "bad") : "neutral"}`} style={{ marginLeft: 5 }} data-testid="badge-uo"
-    title={`Ultimate Oscillator ${m.uo} and Williams %R ${m.wr ?? "—"} on ${m.date}.${pull ? " On the pullback side of the 8-week reading: in past cases like this the next week went the commercials' way 75% of the time (28 cases)." : ""}`}>
-    UO {Math.round(m.uo)}{pull ? " · pullback" : ""}
+  return <span className={pull ? (m.dir > 0 ? "change-up" : "change-down") : ""} data-testid="value-uo-cell"
+    title={`Ultimate Oscillator ${m.uo} and Williams %R ${m.wr ?? "—"}, daily, ${m.date} settlement.${pull ? " On the pullback side of the 8-week reading: in past cases like this the next week went the commercials' way 75% of the time (28 cases)." : ""}`}>
+    {Math.round(m.uo)} <span className="subtle">· {m.wr == null ? "—" : Math.round(m.wr)}</span>{pull ? " · pullback" : ""}
   </span>;
 }
 
@@ -32,7 +35,7 @@ export function LiveRecord() {
   const pct = (a: number, b: number) => b ? `${Math.round(a / b * 100)}%` : "—";
   return <section className="card section" data-testid="live-record">
     <div className="card-head"><div><h2 className="panel-title">8-week reading: the record</h2>
-      <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>How the week after each reading went, in the commercials' direction · <Link href="/how-it-works#model">method</Link></div></div></div>
+      <div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>How the week after each reading went, in the commercials' direction · <Link href="/how-it-works/watchlist">how to read it</Link></div></div></div>
     <div className="card-body">
       <div className="sx-scroll"><table className="sx-table">
         <thead><tr><th /><th className="num">Cases</th><th className="num">Next week went their way</th><th className="num">Average move</th></tr></thead>
@@ -56,7 +59,7 @@ export function OscReadout({ code }: { code?: string }) {
   const side = m.dir === 0 ? "No 8-week reading this report" : m.uoPullback ? `Pullback side · past cases: ${COT8_RECORD.pullback.wentItsWay}% went the commercials' way (${COT8_RECORD.pullback.cases})`
     : `Not on the pullback side · all readings: ${COT8_RECORD.all.wentItsWay}% (${COT8_RECORD.all.cases})`;
   return <>
-    <div className="statline"><span className="subtle">Ultimate Oscillator · %R (daily, {m.date.slice(5)})</span><b className="mono" data-testid="value-uo">{m.uo ?? "—"} · {m.wr ?? "—"}</b></div>
+    <div className="statline"><span className="subtle">Ultimate Oscillator · %R (daily, {m.date.slice(5)} settlement)</span><b className="mono" data-testid="value-uo">{m.uo ?? "—"} · {m.wr ?? "—"}</b></div>
     <div className="statline"><span className="subtle">With the 8-week reading</span><b data-testid="value-uo-side" className={m.uoPullback ? (m.dir > 0 ? "change-up" : "change-down") : ""}>{side}</b></div>
   </>;
 }
