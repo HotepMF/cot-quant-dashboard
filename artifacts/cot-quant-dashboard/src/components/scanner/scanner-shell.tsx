@@ -56,7 +56,7 @@ export function ScannerShell({ eyebrow, title, lede, screener, children }: { eye
       {children}
       <footer className="scan-foot">
         <span>COT Quant · all-market scan of the official CFTC Legacy report</span>
-        <span>Setups are mechanical rule states, not recommendations.</span>
+        <span>Readings are mechanical rule states, not recommendations.</span>
       </footer>
     </main>
     <SiteMobileNav />
