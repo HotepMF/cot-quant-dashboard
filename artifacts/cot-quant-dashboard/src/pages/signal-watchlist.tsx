@@ -63,7 +63,7 @@ export function SignalWatchlistPage() {
     ...(counts.pending ? [{ id: "loading" as const, label: `Queued ${counts.pending}` }] : []),
   ];
 
-  return <ScannerShell screener={s} eyebrow="Core markets / Watchlist" title="Watchlist" lede="Extreme readings and large positioning / open-interest changes across the core watchlist markets. Extreme readings rank by how far past the rule they are.">
+  return <ScannerShell screener={s} eyebrow="All-market scan / Watchlist" title="Watchlist" lede="Extreme readings and large positioning / open-interest changes across the core watchlist markets. Extreme readings rank by how far past the rule they are.">
     <ScoreExplainer />
     <div className="card wl-filters print-hidden">
       <div className="wl-row">

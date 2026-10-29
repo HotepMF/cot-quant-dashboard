@@ -138,7 +138,7 @@ export function InvisibleHandPage() {
     <main className="main sx-main">
       <header className="topline">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 9 }}>Weekly macro backdrop</div>
+          <div className="eyebrow" style={{ marginBottom: 9 }}>All-market scan / The Invisible Hand</div>
           <h1 className="page-title display">The Invisible Hand</h1>
           <p className="subtle scan-lede">The forces behind the market this week: rates, credit, volatility, power and the AI trade, and who is positioned in each. Positioning updates minutes after each Friday CFTC release; prices and yields after each close.</p>
         </div>

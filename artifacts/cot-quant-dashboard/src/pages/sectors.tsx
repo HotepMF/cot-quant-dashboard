@@ -129,7 +129,7 @@ const tests: [string, string, string][] = [
 
 export function SectorsPage() {
   const [isDark, setIsDark] = useTheme();
-  useEffect(() => { window.scrollTo(0, 0); document.title = "Sectors · COT Quant"; }, []);
+  useEffect(() => { window.scrollTo(0, 0); document.title = "SPDR sectors · COT Quant"; }, []);
   const query = useQuery({
     queryKey: ["sectors"],
     queryFn: async () => {
@@ -164,7 +164,7 @@ export function SectorsPage() {
     <main className="main sx-main">
       <header className="topline">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 9 }}>Sectors under the hood</div>
+          <div className="eyebrow" style={{ marginBottom: 9 }}>All-market scan / SPDR sectors</div>
           <h1 className="page-title display">SPDR sectors</h1>
           <p className="subtle scan-lede">Each sector against the S&amp;P 500, with the futures positioning underneath it. Prices update every trading day; positioning with each weekly CFTC report.</p>
         </div>

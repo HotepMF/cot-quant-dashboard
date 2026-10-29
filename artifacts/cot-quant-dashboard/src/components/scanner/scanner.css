@@ -100,6 +100,8 @@
 /* How it works */
 .hiw-toc { display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px; }
 .hiw-toc .ms-chip { text-decoration:none; }
+.hiw-tab { display:inline-flex;align-items:center;gap:6px; }
+.hiw-group { font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:hsl(var(--muted-foreground));margin-left:8px; }
 .hiw-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start; }
 .hiw-section { scroll-margin-top:16px; }
 .hiw-body { display:grid;gap:10px;font-size:13px;line-height:1.6;color:hsl(var(--foreground) / .9); }
