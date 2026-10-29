@@ -123,6 +123,18 @@
 .hiw-table td.num { text-align:left; }
 .hiw-quick { font-size:13px;line-height:1.55;margin:0; }
 .hiw-steps { margin:0;padding-left:20px;display:grid;gap:8px; }
+.hiw-bell { width:100%;height:auto;max-width:560px;display:block;margin:2px auto 4px; }
+.hiw-bell-line { fill:none;stroke:hsl(var(--foreground) / .75);stroke-width:1.6; }
+.hiw-bell-mid { fill:hsl(var(--muted-foreground) / .14); }
+.hiw-bell-long { fill:rgba(42,139,121,.45); }
+.hiw-bell-short { fill:rgba(201,91,76,.45); }
+.hiw-bell-axis { stroke:hsl(var(--muted-foreground) / .6);stroke-width:1; }
+.hiw-bell-dash { stroke:hsl(var(--muted-foreground));stroke-width:1;stroke-dasharray:4 3; }
+.hiw-bell-text { fill:hsl(var(--muted-foreground));font-size:11px; }
+.hiw-bell-long-text { fill:#2a8b79;font-weight:600; }
+.hiw-bell-short-text { fill:#c95b4c;font-weight:600; }
+.hiw-bell-narrow { display:none; }
+@media(max-width:600px) { .hiw-bell-text { font-size:17px; } .hiw-bell-sub { display:none; } .hiw-bell-narrow { display:inline; } }
 .hiw-pager { display:flex;justify-content:space-between;gap:10px;max-width:860px;margin:16px 0 4px; }
 .hiw-toc a[aria-pressed="true"] { pointer-events:none; }
 /* Settings bar (components/settings-bar.tsx). */

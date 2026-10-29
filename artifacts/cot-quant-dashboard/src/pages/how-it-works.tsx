@@ -9,6 +9,7 @@ import { SiteBrand, SiteMobileNav, SiteNav } from "@/components/site-nav";
 /** The sub-pages, in the sidebar's order and with its names (Workspace, then All-market scan), then using it and the data. */
 const PAGES = [
   { slug: "start", label: "Start here" },
+  { slug: "z-scores", label: "Z-scores explained" },
   { slug: "market-overview", label: "Market overview", group: "Workspace" },
   { slug: "positioning", label: "Positioning", group: "Workspace" },
   { slug: "weekly-readings", label: "Weekly readings", group: "Workspace" },
@@ -43,6 +44,36 @@ const More = ({ label = "More", children }: { label?: string; children: ReactNod
   <details className="hiw-more"><summary>{label}</summary><div className="hiw-body">{children}</div></details>;
 /** "How to read it": the one-line version of a page. */
 const Quick = ({ children }: { children: ReactNode }) => <div className="notice hiw-quick">{children}</div>;
+/** A bell curve with the site's ±2.25 extremes shaded; drawn from the normal density, theme colors only. */
+function BellCurve() {
+  const W = 560, H = 190, base = 150, top = 22, xs = (z: number) => 30 + (z + 4) / 8 * (W - 60);
+  const ys = (z: number) => base - Math.exp(-z * z / 2) * (base - top);
+  const path = (a: number, b: number) => {
+    const pts: string[] = [];
+    for (let z = a; z <= b + 1e-9; z += 0.05) pts.push(`${xs(z).toFixed(1)},${ys(z).toFixed(1)}`);
+    return pts;
+  };
+  const area = (a: number, b: number) => `M${xs(a)},${base} L${path(a, b).join(" L")} L${xs(b)},${base} Z`;
+  const ticks = [-3, -2, -1, 0, 1, 2, 3];
+  return <svg viewBox={`0 0 ${W} ${H}`} className="hiw-bell" role="img" aria-label="Bell curve: most weeks sit near the average; beyond plus or minus 2.25 standard deviations is shaded as extreme">
+    <path d={area(-1, 1)} className="hiw-bell-mid" />
+    <path d={area(-4, -2.25)} className="hiw-bell-short" />
+    <path d={area(2.25, 4)} className="hiw-bell-long" />
+    <path d={`M${path(-4, 4).join(" L")}`} className="hiw-bell-line" />
+    <line x1={xs(-4)} x2={xs(4)} y1={base} y2={base} className="hiw-bell-axis" />
+    {ticks.map(z => <g key={z}><line x1={xs(z)} x2={xs(z)} y1={base} y2={base + 5} className="hiw-bell-axis" /><text x={xs(z)} y={base + 18} textAnchor="middle" className="hiw-bell-text">{z > 0 ? `+${z}` : z}</text></g>)}
+    {[-2.25, 2.25].map(z => <line key={z} x1={xs(z)} x2={xs(z)} y1={top - 6} y2={base} className="hiw-bell-dash" />)}
+    <text x={xs(0)} y={base - 40} textAnchor="middle" className="hiw-bell-text hiw-bell-sub">about 2 in 3 weeks</text>
+    <text x={xs(0)} y={base - 32} textAnchor="middle" className="hiw-bell-text hiw-bell-narrow">2 in 3 within ±1</text>
+    <text x={xs(0)} y={base - 26} textAnchor="middle" className="hiw-bell-text hiw-bell-sub">within ±1</text>
+    <text x={xs(-3.1)} y={top + 2} textAnchor="middle" className="hiw-bell-text hiw-bell-short-text">Extreme short</text>
+    <text x={xs(-3.1)} y={top + 16} textAnchor="middle" className="hiw-bell-text hiw-bell-sub">below −2.25</text>
+    <text x={xs(3.1)} y={top + 2} textAnchor="middle" className="hiw-bell-text hiw-bell-long-text">Extreme long</text>
+    <text x={xs(3.1)} y={top + 16} textAnchor="middle" className="hiw-bell-text hiw-bell-sub">above +2.25</text>
+    <text x={xs(0)} y={H - 4} textAnchor="middle" className="hiw-bell-text hiw-bell-sub">Z-score (standard deviations from the 8-week average)</text>
+  </svg>;
+}
+
 const to = (slug: Slug, hash = "") => `/how-it-works/${slug}${hash ? `#${hash}` : ""}`;
 
 export function HowItWorksPage() {
@@ -124,7 +155,39 @@ const CONTENT: Record<Slug, () => ReactNode> = {
       <p>Commercials and large traders usually sit on opposite sides: when funds chase a trend, hedgers take the other side. The site reads commercials in their own direction and speculators against theirs.</p>
     </Section>
     <Section title="The pages">
-      <p>Each item in the sidebar has its own page here, with the same name and in the same order. <b>Workspace</b> is one market in depth: <Link href={to("market-overview")}>Market overview</Link>, <Link href={to("positioning")}>Positioning</Link>, <Link href={to("weekly-readings")}>Weekly readings</Link> and <Link href={to("settings")}>Settings</Link>. <b>All-market scan</b> covers every core market: <Link href={to("sector-positioning")}>Sector positioning</Link>, <Link href={to("watchlist")}>Watchlist</Link>, <Link href={to("spdr")}>SPDR sectors</Link> and <Link href={to("invisible-hand")}>The Invisible Hand</Link>. <Link href={to("using-it")}>Using it day to day</Link> puts it all together.</p>
+      <p>Each item in the sidebar has its own page here, with the same name and in the same order. <b>Workspace</b> is one market in depth: <Link href={to("market-overview")}>Market overview</Link>, <Link href={to("positioning")}>Positioning</Link>, <Link href={to("weekly-readings")}>Weekly readings</Link> and <Link href={to("settings")}>Settings</Link>. <b>All-market scan</b> covers every core market: <Link href={to("sector-positioning")}>Sector positioning</Link>, <Link href={to("watchlist")}>Watchlist</Link>, <Link href={to("spdr")}>SPDR sectors</Link> and <Link href={to("invisible-hand")}>The Invisible Hand</Link>. <Link href={to("using-it")}>Using it day to day</Link> puts it all together. New to Z-scores? Read <Link href={to("z-scores")}>Z-scores explained</Link> first.</p>
+    </Section>
+  </>,
+
+  "z-scores": () => <>
+    <Quick><b>The short version:</b> a Z-score says how unusual this week is compared with the last 8 weeks. 0 is normal, ±1 is common, ±2 is unusual, and past ±2.25 the site calls it an extreme.</Quick>
+    <Section title="Standard deviation: what normal looks like">
+      <p>Every market moves differently. Crude oil positions can swing by tens of thousands of contracts in a week; a small market might move by a few hundred. The <b>standard deviation</b> measures how much a number usually moves away from its own average. It is that market's "normal amount of change".</p>
+      <p>The site works out each group's average net position and standard deviation over the last <b>8 weeks</b>, so "normal" is always measured against the market's own recent behavior.</p>
+    </Section>
+    <Section title="The Z-score: how many normal moves away">
+      <p><b>Z-score = (this week − the 8-week average) ÷ the standard deviation.</b></p>
+      <p>Example: commercials in a market have averaged 100,000 contracts net long over 8 weeks, and they usually sit about 10,000 contracts from that average. This week they are at 125,000. That is 25,000 above average, or 2.5 standard deviations: a <b>Z-score of +2.5</b>, past the +2.25 line.</p>
+      <p>A positive Z means the group is more long (or less short) than usual; a negative Z means more short than usual.</p>
+    </Section>
+    <Section title="The bell curve: where extremes sit">
+      <BellCurve />
+      <p>When you collect lots of measurements, most of them land near the middle and fewer land far out, which draws a bell-shaped <b>distribution curve</b>. On a bell curve about <b>2 in 3</b> values sit within ±1 standard deviation, about <b>95 in 100</b> within ±2, and only about <b>1 in 80</b> lands beyond +2.25 (the same on the short side). That is why the site uses ±2.25 as its extreme: it marks a week that stands far outside the usual spread.</p>
+      <More label="Real data and the 8-week window">
+        <ul>
+          <li>Positioning does not follow a perfect bell curve. Big shifts happen more often than the curve suggests, so treat the percentages as a guide to how rare a reading is, not an exact count.</li>
+          <li>With only 8 weeks in the window, a Z-score cannot go much past ±2.65. A reading at ±2.25 means this week stands well apart from the other seven.</li>
+          <li>The site's Z-score includes the current week in the average and uses the population standard deviation (dividing by 8, not 7).</li>
+        </ul>
+      </More>
+    </Section>
+    <Section title="Why the site uses them">
+      <ul>
+        <li><b>One scale for every market.</b> A Z of +2.5 means the same thing for crude, gold, the euro or corn, so markets can be compared side by side and ranked on the Watchlist.</li>
+        <li><b>Each market judged by its own normal.</b> A quiet market and a busy one are both measured against how they usually behave.</li>
+        <li><b>It keeps up.</b> The 8-week window moves every week, so the yardstick follows what the market is doing now rather than what it did years ago.</li>
+        <li><b>It pairs with cycle rank.</b> The Z-score says how unusual this week is against the last two months; the cycle rank says where the position sits in the market's whole history. An extreme reading needs both.</li>
+      </ul>
     </Section>
   </>,
 
