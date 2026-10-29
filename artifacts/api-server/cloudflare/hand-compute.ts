@@ -285,12 +285,15 @@ export function completedWeeks(b: DailyBars, now = new Date()): WeekBar[] {
   return out.filter(w => w.week < today || (w.week === today && late));
 }
 
-/** Last date whose daily close is final in New York (today after 17:30, otherwise the previous day). */
-export function completeThrough(now = new Date()): string {
-  const ny = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
-    .formatToParts(now).map(p => [p.type, p.value]));
-  const today = `${ny.year}-${ny.month}-${ny.day}`;
-  return Number(ny.hour) * 60 + Number(ny.minute) >= 17 * 60 + 30 ? today : new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+/**
+ * Last date whose futures daily close is the exchange settlement: the day before today in New York.
+ * Yahoo's bar for today holds the last trade until late evening, when it is replaced by the settlement, so a same-day
+ * close would mix one last-trade price into a settlement series. The pre-open run (06:00-09:00 New York) picks up
+ * the previous day once it has settled.
+ */
+export function settledThrough(now = new Date()): string {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(now);
+  return new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
 }
 
 /** Per case market: the site default's latest reading (the 8-week reading) and its daily bars. */

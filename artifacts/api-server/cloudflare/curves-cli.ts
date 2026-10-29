@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { URL } from "node:url";
 import { CURVE_DEPTH, CURVE_MARKETS, curveCandidates, curveCarry, curveSpread, realisedVol, type CurveContract, type CurvePairHistory, type CurveRow, type CurveSnapshot } from "@workspace/cot-engine";
-import { completeThrough } from "./hand-compute";
+import { settledThrough } from "./hand-compute";
 import { upTo, yahooBars } from "./hand-sources";
 import { RestD1 } from "./rest-d1";
 import { saveSnapshot } from "./sectors-cli";
@@ -81,8 +81,8 @@ async function cboeVix(today: string, through: string): Promise<{ contracts: Cur
  */
 async function main() {
   const today = new Date().toISOString().slice(0, 10);
-  // Only final closes: the last session that has closed in New York (the same rule as the oscillator job).
-  const through = completeThrough();
+  // Only settled closes: through yesterday in New York (the same rule as the oscillator job).
+  const through = settledThrough();
   const markets: CurveRow[] = [], missing: string[] = [];
   for (const m of CURVE_MARKETS) {
     const fetched: { month: string; ticker: string; closes: Map<string, number> }[] = [];
