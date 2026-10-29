@@ -103,7 +103,7 @@ export function MarketTable({ rows, report, lookback, showSector, rank, sortKey,
           return <tr key={r.name} className={`scan-row ${r.active ? `active ${tone}` : ""} ${r.status !== "ready" ? "dim" : ""}`} onClick={() => open(r.name)} data-testid={`row-market-${r.code}`}>
             {rank && <td className="mono subtle">{String(i + 1).padStart(2, "0")}</td>}
             <td className="scan-market">
-              <button className="market-link" onClick={e => { e.stopPropagation(); open(r.name); }} title={`Open ${r.name} in market detail`} data-testid={`button-open-${r.code}`}>{r.label}</button>
+              <button className="market-link" onClick={e => { e.stopPropagation(); open(r.name); }} title={`Open ${r.name} in Market overview`} data-testid={`button-open-${r.code}`}>{r.label}</button>
               <span className="mono subtle">{r.exchange || "—"} · {r.code}</span>
               {reason && <span className="scan-reason">{reason}</span>}
             </td>

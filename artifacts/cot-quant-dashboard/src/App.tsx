@@ -91,7 +91,7 @@ const makeCsv = (rows: Record<string, unknown>[], fileName: string) => {
   link.href = url; link.download = fileName; link.click(); URL.revokeObjectURL(url);
 };
 function Dashboard() {
-  useEffect(() => { document.title = "COT Quant Dashboard"; }, []);
+  useEffect(() => { document.title = "Market overview · COT Quant"; }, []);
   const [settings, setSettings] = useSharedSettings();
   const [isDark, setIsDark] = useState(() => { try { return localStorage.getItem(STORAGE_THEME) !== "light"; } catch { return true; } });
   const [liveReport, setLiveReport] = useState<"futures" | "combined">(() => {
@@ -290,8 +290,8 @@ function Dashboard() {
     <main className="main">
       <header className="topline">
         <div>
-          <div className="eyebrow" style={{ marginBottom: 9 }}>Positioning intelligence <span style={{ margin: "0 6px" }}>/</span> {effectiveMarket?.name ?? "CFTC markets"}</div>
-          <h1 className="page-title display">COT Quant Dashboard</h1>
+          <div className="eyebrow" style={{ marginBottom: 9 }}>Workspace <span style={{ margin: "0 6px" }}>/</span> {effectiveMarket?.name ?? "CFTC markets"}</div>
+          <h1 className="page-title display">Market overview</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 9, flexWrap: "wrap" }}>
             <span className={`badge ${liveFailure ? "bad" : liveActive && !isReportStale ? "good" : "warn"}`} data-testid="status-data-mode"><span className="dot" style={{ background: liveFailure ? "#e27667" : liveActive && !isReportStale ? "#69c8a7" : "#e6a752" }} />{liveFailure ? "CFTC request failed" : liveActive && isReportStale ? "CFTC report may be stale" : liveActive ? "Official CFTC data · weekly" : "Illustrative demo fallback"}</span>
             <span className="subtle" style={{ fontSize: 12 }}>{computed.length} weekly observations · latest report date {latest ? formatDate(latest.date) : "—"}</span>
@@ -392,7 +392,7 @@ function Dashboard() {
 
       <section id="positioning" className="section">
         <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
-          <div><div className="eyebrow">Participant detail</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Positioning profile</h2></div>
+          <div><div className="eyebrow">Workspace</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Positioning</h2></div>
           <button className="btn print-hidden" onClick={() => makeCsv(exportRows(), "cot-positioning-analysis.csv")}><Download size={14} />Export analysis</button>
         </div>
         <div className="participant-grid">
@@ -448,7 +448,7 @@ function Dashboard() {
       </section>
 
       <section id="signals" className="section">
-        <div style={{ marginBottom: 13, display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12 }}><div><div className="eyebrow">Indicator semantics</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Readings &amp; weekly ledger</h2></div><Link href="/how-it-works/settings" className="subtle print-hidden" style={{ fontSize: 12 }}>How the reading modes work</Link></div>
+        <div style={{ marginBottom: 13, display: "flex", alignItems: "end", justifyContent: "space-between", gap: 12 }}><div><div className="eyebrow">Workspace</div><h2 className="display" style={{ fontSize: 24, margin: "4px 0 0" }}>Weekly readings</h2></div><Link href="/how-it-works/settings" className="subtle print-hidden" style={{ fontSize: 12 }}>How the reading modes work</Link></div>
         <div className="card">
           <div className="card-head"><div><h3 className="panel-title">Weekly calculations</h3><div className="subtle" style={{ fontSize: 11, marginTop: 4 }}>{dataMarketLabel} · {reportName} · one record per week report date; latest row drives readout</div></div>
             <div className="toolbar print-hidden">{exportButton("weekly-ledger")}<button className="btn" onClick={() => setTablePage(p => Math.max(0, p - 1))} disabled={tablePage === 0}>Previous</button><button className="btn" onClick={() => setTablePage(p => Math.min(Math.ceil(computed.length / 10) - 1, p + 1))} disabled={(tablePage + 1) * 10 >= computed.length}>Next</button></div>
